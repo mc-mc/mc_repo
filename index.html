@@ -1,3 +1,89 @@
-<html>
-  <h1>Hello</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock & Timer</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #clock {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        #timer {
+            font-size: 5rem;
+            margin: 20px 0;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+        }
+        button:disabled {
+            background-color: #555;
+        }
+        #stop {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div id="clock">00:00:00</div>
+    <div id="timer">00:00</div>
+    <div class="buttons">
+        <button id="start" onclick="startTimer()">Start</button>
+        <button id="stop" onclick="stopTimer()" disabled>Stop</button>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        let timer;
+        let time = 0;
+        function updateTimerDisplay() {
+            const minutes = String(Math.floor(time / 60)).padStart(2, '0');
+            const seconds = String(time % 60).padStart(2, '0');
+            document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+        }
+        function startTimer() {
+            document.getElementById('start').disabled = true;
+            document.getElementById('stop').disabled = false;
+            timer = setInterval(() => {
+                time++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+        function stopTimer() {
+            clearInterval(timer);
+            document.getElementById('start').disabled = false;
+            document.getElementById('stop').disabled = true;
+        }
+    </script>
+</body>
 </html>
