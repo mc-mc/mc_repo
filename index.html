@@ -17,11 +17,19 @@
             text-align: center;
         }
 
+        #top_left {
+            font-size: 3rem;
+            position: absolute;
+            top: 1px;
+            left: 5px;
+            text-align: left;
+        }
+        
         #clock {
             font-size: 3rem;
             position: absolute;
-            top: 10px;
-            right: 20px;
+            top: 1px;
+            right: 5px;
             text-align: right;
         }
         
@@ -55,17 +63,30 @@
         #finish_frame {
             background-color: #2805ff;
         }
+        #plus_minus {
+            background-color: #484848;
+        }
     </style>
 </head>
 <body>
-    <div id="clock">00:00:00</div>
+    <div>
+      <div id="top_left">
+          <div class="buttons">
+              <button id="start" onclick="startTimer()">Start</button>
+              <button id="stop" onclick="stopTimer()" disabled>Stop</button>
+              <button id="finish_frame" onclick="finishFrame()">Finish Frame</button>
+              <button id="plus_minus" onclick="change_frame(-1)">F-</button>
+              <button id="plus_minus" onclick="change_frame(+1)">F+</button>
+              <button id="plus_minus" onclick="change_time(-60)">T-</button>
+              <button id="plus_minus" onclick="change_time(+60)">T+</button>
+           </div>
+      </div>
+      <div id="clock">00:00</div>
+    </div>
+    
     <div id="frame_label">Frame: 1</div>
     <div id="timer">00:00</div>
-    <div class="buttons">
-        <button id="start" onclick="startTimer()">Start</button>
-        <button id="stop" onclick="stopTimer()" disabled>Stop</button>
-        <button id="finish_frame" onclick="finishFrame()">Finish Frame</button>
-    </div>
+   
 
     <script>
         function updateClock() {
@@ -107,7 +128,18 @@
          updateTimerDisplay();
          startTimer();
         }
-        
+
+        function change_frame(i) {
+         frame=frame+i;
+         document.getElementById('frame_label').textContent = `Frame: ${frame}`;         
+        }
+
+        function change_time(i) {
+         time=time+i;
+         if (time<0) time=0;
+         updateTimerDisplay();
+        }
+                
         // Prevent phone from sleeping
         let wakeLock = null;
         async function requestWakeLock() {
