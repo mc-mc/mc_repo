@@ -16,11 +16,20 @@
             font-family: Arial, sans-serif;
             text-align: center;
         }
+
         #clock {
             font-size: 3rem;
-            margin-bottom: 20px;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            text-align: right;
         }
+        
         #timer {
+            font-size: 5rem;
+            margin: 20px 0;
+        }
+        #frame_label {
             font-size: 5rem;
             margin: 20px 0;
         }
@@ -43,14 +52,19 @@
         #stop {
             background-color: #dc3545;
         }
+        #finish_frame {
+            background-color: #2805ff;
+        }
     </style>
 </head>
 <body>
     <div id="clock">00:00:00</div>
+    <div id="frame_label">Frame: 1</div>
     <div id="timer">00:00</div>
     <div class="buttons">
         <button id="start" onclick="startTimer()">Start</button>
         <button id="stop" onclick="stopTimer()" disabled>Stop</button>
+        <button id="finish_frame" onclick="finishFrame()">Finish Frame</button>
     </div>
 
     <script>
@@ -66,6 +80,7 @@
 
         let timer;
         let time = 0;
+        let frame=1;
         function updateTimerDisplay() {
             const minutes = String(Math.floor(time / 60)).padStart(2, '0');
             const seconds = String(time % 60).padStart(2, '0');
@@ -83,6 +98,14 @@
             clearInterval(timer);
             document.getElementById('start').disabled = false;
             document.getElementById('stop').disabled = true;
+        }
+        function finishFrame() {
+         stopTimer();
+         frame=frame+1;
+         document.getElementById('frame_label').textContent = `Frame: ${frame}`;         
+         time=0;
+         updateTimerDisplay();
+         startTimer();
         }
         
         // Prevent phone from sleeping
