@@ -24,6 +24,14 @@
             left: 5px;
             text-align: left;
         }
+
+        #content_left {
+            font-size: 3rem;
+            position: absolute;
+            top: 50px;
+            left: 5px;
+            text-align: left;
+        }
         
         #clock {
             font-size: 3rem;
@@ -83,11 +91,12 @@
       </div>
       <div id="clock">00:00</div>
     </div>
-    
-    <div id="frame_label">Frame: 1</div>
-    <div id="timer">00:00</div>
-   
-
+    <div>
+        <div id="content_left">
+            <div id="frame_label">Frame: 1</div>
+            <div id="timer">00:00</div>
+        </div>
+    </div>
     <script>
         function updateClock() {
             const now = new Date();
