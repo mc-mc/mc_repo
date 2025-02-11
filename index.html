@@ -70,6 +70,15 @@
             background-color: #28a745;
             color: white;
         }
+        input {
+            font-size: 1.5rem;
+            padding: 5px 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: white;
+        }
         button:disabled {
             background-color: #555;
         }
@@ -105,11 +114,11 @@
             <div id="timer">00:00</div>
         </div>
         <div id="content_right">
-            <div > <input type="text" id="f1" name="f1"></div>
-            <div > <input type="text" id="f2" name="f2"></div>
-            <div > <input type="text" id="f3" name="f3"></div>
-            <div > <input type="text" id="f4" name="f4"></div>
-            <div > <input type="text" id="f5" name="f5"></div>
+            <div><input type="text" id="f1" name="f1"><input type="text" id="f6" name="f6"></div>
+            <div><input type="text" id="f2" name="f2"><input type="text" id="f7" name="f7"></div>
+            <div><input type="text" id="f3" name="f3"><input type="text" id="f8" name="f8"></div>
+            <div><input type="text" id="f4" name="f4"><input type="text" id="f9" name="f9"></div>
+            <div><input type="text" id="f5" name="f5"><input type="text" id="f10" name="f10"></div>
         </div>
         
     </div>
@@ -149,7 +158,7 @@
          stopTimer();
          
          // Update textbox with frame time
-         if (frame<6)
+         if (frame<11)
          {
           document.getElementById('f'+frame).value ='Frame '+frame+' '+ document.getElementById('timer').textContent
          }
@@ -166,6 +175,7 @@
 
         function change_frame(i) {
          frame=frame+i;
+         if (frame<1) frame=1;
          document.getElementById('frame_label').textContent = `Frame: ${frame}`;         
         }
 
