@@ -59,7 +59,7 @@
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('clock').textContent = `${hours}:${minutes}:${seconds}`;
+            document.getElementById('clock').textContent = `${hours}:${minutes}`;
         }
         setInterval(updateClock, 1000);
         updateClock();
@@ -84,6 +84,24 @@
             document.getElementById('start').disabled = false;
             document.getElementById('stop').disabled = true;
         }
+        
+        // Prevent phone from sleeping
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } catch (err) {
+                console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+            console.log("run waitlock");
+        }
+        document.addEventListener("visibilitychange", async () => {
+            if (wakeLock !== null && document.visibilityState === "visible") {
+                await requestWakeLock();
+            }
+        });
+        requestWakeLock();
+        
     </script>
 </body>
 </html>
