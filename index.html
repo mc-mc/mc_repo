@@ -33,6 +33,14 @@
             text-align: left;
         }
         
+        #content_right {
+            font-size: 3rem;
+            position: absolute;
+            top: 50px;
+            right: 5px;
+            text-align: right;
+        }
+        
         #clock {
             font-size: 3rem;
             position: absolute;
@@ -96,6 +104,14 @@
             <div id="frame_label">Frame: 1</div>
             <div id="timer">00:00</div>
         </div>
+        <div id="content_right">
+            <div > <input type="text" id="f1" name="f1"></div>
+            <div > <input type="text" id="f2" name="f2"></div>
+            <div > <input type="text" id="f3" name="f3"></div>
+            <div > <input type="text" id="f4" name="f4"></div>
+            <div > <input type="text" id="f5" name="f5"></div>
+        </div>
+        
     </div>
     <script>
         function updateClock() {
@@ -131,8 +147,18 @@
         }
         function finishFrame() {
          stopTimer();
+         
+         // Update textbox with frame time
+         if (frame<6)
+         {
+          document.getElementById('f'+frame).value ='Frame '+frame+' '+ document.getElementById('timer').textContent
+         }
+         
+         // Increase frame number
          frame=frame+1;
          document.getElementById('frame_label').textContent = `Frame: ${frame}`;         
+         
+         // Reset timer and restart
          time=0;
          updateTimerDisplay();
          startTimer();
