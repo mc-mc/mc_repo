@@ -133,6 +133,36 @@
         #menu_popup div:hover, #menu_popup div:active {
             background-color: #484848;
         }
+
+        dialog {
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 10px;
+            padding: 25px 30px;
+            max-width: 420px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.65);
+        }
+        #dlg_title {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        #dlg_msg {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+        }
+        #dlg_buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        #dlg_cancel {
+            background-color: #484848;
+        }
     </style>
 </head>
 <body>
@@ -189,6 +219,14 @@
         <div onclick="menuClear()">Clear...</div>
         <div onclick="menuSave()">Save...</div>
     </div>
+    <dialog id="dlg">
+        <div id="dlg_title"></div>
+        <div id="dlg_msg"></div>
+        <div id="dlg_buttons">
+            <button id="dlg_cancel">Cancel</button>
+            <button id="dlg_ok">OK</button>
+        </div>
+    </dialog>
     <script>
         function updateClock() {
             const now = new Date();
@@ -262,9 +300,34 @@
         }
         document.addEventListener('click', closeMenu);
 
+        // Custom dialog (replaces browser confirm/alert)
+        function showDialog({title, message, okText = 'OK', okColor = '#28a745', cancelText = null, onOk = null}) {
+            const dlg = document.getElementById('dlg');
+            const ok = document.getElementById('dlg_ok');
+            const cancel = document.getElementById('dlg_cancel');
+            document.getElementById('dlg_title').textContent = title;
+            document.getElementById('dlg_msg').textContent = message;
+            ok.textContent = okText;
+            ok.style.backgroundColor = okColor;
+            ok.onclick = () => { dlg.close(); if (onOk) onOk(); };
+            cancel.style.display = cancelText ? '' : 'none';
+            cancel.textContent = cancelText || '';
+            cancel.onclick = () => dlg.close();
+            dlg.showModal();
+        }
+
         function menuClear() {
             closeMenu();
-            if (!confirm('Reset the timer, frame number and all frame times?')) return;
+            showDialog({
+                title: 'Clear everything?',
+                message: 'This resets the timer, frame number and all frame times.',
+                okText: 'Clear',
+                okColor: '#dc3545',
+                cancelText: 'Cancel',
+                onOk: doClear
+            });
+        }
+        function doClear() {
             stopTimer();
             time = 0;
             frame = 1;
@@ -277,7 +340,10 @@
         }
         function menuSave() {
             closeMenu();
-            alert('Save - not implemented yet (placeholder).');
+            showDialog({
+                title: 'Save',
+                message: 'Not implemented yet (placeholder).'
+            });
         }
 
         // Prevent phone from sleeping
