@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clock & Timer</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #top_left {
+            font-size: 3rem;
+            position: absolute;
+            top: 1px;
+            left: 5px;
+            text-align: left;
+        }
+
+        #content_left {
+            font-size: 3rem;
+            position: absolute;
+            top: 50px;
+            left: 5px;
+            text-align: left;
+        }
+        
+        #content_right {
+            font-size: 3rem;
+            position: absolute;
+            top: 50px;
+            right: 5px;
+            text-align: right;
+        }
+        
+        #clock {
+            font-size: 3rem;
+            position: absolute;
+            top: 1px;
+            right: 5px;
+            text-align: right;
+        }
+        
+        #timer {
+            font-size: 5rem;
+            padding: 50px;
+            margin: 20px 0;
+        }
+        #frame_label {
+            font-size: 4rem;
+            margin: 20px 0;
+        }
+        .flabel {
+            font-size: 0.6em;
+            margin: 0px 0;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            font-size: 1.5rem;
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+        }
+        input {
+            font-size: 1.5rem;
+            padding: 5px 15px;
+            cursor: pointer;
+            border: none;
+            background-color: #333;
+            color: white;
+            width: 10%;
+            margin: 1px;
+        }
+        button:disabled {
+            background-color: #555;
+        }
+        #stop {
+            background-color: #dc3545;
+        }
+        #finish_frame {
+            background-color: #2805ff;
+        }
+        #plus_minus {
+            background-color: #484848;
+        }
+    </style>
+</head>
+<body>
+    <div>
+      <div id="top_left">
+          <div class="buttons">
+              <button id="start" onclick="startTimer()">Start</button>
+              <button id="stop" onclick="stopTimer()" disabled>Stop</button>
+              <button id="finish_frame" onclick="finishFrame()">Finish Frame</button>
+              <button id="plus_minus" onclick="change_frame(-1)">F-</button>
+              <button id="plus_minus" onclick="change_frame(+1)">F+</button>
+              <button id="plus_minus" onclick="change_time(-60)">T-</button>
+              <button id="plus_minus" onclick="change_time(+60)">T+</button>
+           </div>
+      </div>
+      <div id="clock">00:00</div>
+    </div>
+    <div>
+        <div id="content_left">
+            <div id="frame_label">Frame: 1</div>
+            <div id="timer">00:00</div>
+        </div>
+        <div id="content_right">
+            <div>
+                 <label class="flabel" id="f1" name="f1"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf1" name="bf1">
+                 <label class="flabel" id="f6" name="f6"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf6" name="bf1">
+            </div>
+
+            <div>
+                 <label class="flabel" id="f2" name="f2"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf2" name="bf2">
+                 <label class="flabel" id="f7" name="f7"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf7" name="bf7">
+            </div>
+
+            <div>
+                 <label class="flabel" id="f3" name="f3"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf3" name="bf3">
+                 <label class="flabel" id="f8" name="f8"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf8" name="bf8">
+            </div>
+
+            <div>
+                 <label class="flabel" id="f4" name="f4"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf4" name="bf4">
+                 <label class="flabel" id="f9" name="f9"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf9" name="bf9">
+            </div>
+
+            <div>
+                 <label class="flabel" id="f5" name="f5"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf5" name="bf5">
+                 <label class="flabel" id="f10" name="f10"></label><input type="text" inputmode = "numeric" enterkeyhint="done" id="bf10" name="bf10">
+            </div>
+
+        </div>
+        
+    </div>
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        let timer;
+        let time = 0;
+        let frame=1;
+        function updateTimerDisplay() {
+            const minutes = String(Math.floor(time / 60)).padStart(2, '0');
+            const seconds = String(time % 60).padStart(2, '0');
+            document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+        }
+        function startTimer() {
+            document.getElementById('start').disabled = true;
+            document.getElementById('stop').disabled = false;
+            timer = setInterval(() => {
+                time++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+        function stopTimer() {
+            clearInterval(timer);
+            document.getElementById('start').disabled = false;
+            document.getElementById('stop').disabled = true;
+        }
+        function finishFrame() {
+         stopTimer();
+         
+         // Update textbox with frame time
+         if (frame<11)
+         {
+          document.getElementById('f'+frame).innerHTML ='F '+frame+' '+ document.getElementById('timer').textContent
+         }
+         
+         // Increase frame number
+         frame=frame+1;
+         document.getElementById('frame_label').textContent = `Frame: ${frame}`;         
+         
+         // Reset timer and restart
+         time=0;
+         updateTimerDisplay();
+         startTimer();
+        }
+
+        function change_frame(i) {
+         frame=frame+i;
+         if (frame<1) frame=1;
+         document.getElementById('frame_label').textContent = `Frame: ${frame}`;         
+        }
+
+        function change_time(i) {
+         time=time+i;
+         if (time<0) time=0;
+         updateTimerDisplay();
+        }
+                
+        // Prevent phone from sleeping
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+            } catch (err) {
+                console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+            console.log("run waitlock");
+        }
+        document.addEventListener("visibilitychange", async () => {
+            if (wakeLock !== null && document.visibilityState === "visible") {
+                await requestWakeLock();
+            }
+        });
+        requestWakeLock();
+        
+    </script>
+</body>
+</html>

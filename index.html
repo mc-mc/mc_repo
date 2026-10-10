@@ -97,6 +97,42 @@
         #plus_minus {
             background-color: #484848;
         }
+
+        #menu_btn {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 50px;
+            height: 50px;
+            padding: 0;
+            font-size: 2rem;
+            line-height: 50px;
+            background-color: #484848;
+            z-index: 10;
+        }
+        #menu_popup {
+            display: none;
+            position: fixed;
+            bottom: 70px;
+            left: 10px;
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 5px;
+            overflow: hidden;
+            z-index: 10;
+        }
+        #menu_popup.open {
+            display: block;
+        }
+        #menu_popup div {
+            font-size: 1.5rem;
+            padding: 12px 25px;
+            cursor: pointer;
+            text-align: left;
+        }
+        #menu_popup div:hover, #menu_popup div:active {
+            background-color: #484848;
+        }
     </style>
 </head>
 <body>
@@ -147,6 +183,11 @@
 
         </div>
         
+    </div>
+    <button id="menu_btn" onclick="toggleMenu(event)" aria-label="Menu">&#9776;</button>
+    <div id="menu_popup">
+        <div onclick="menuClear()">Clear...</div>
+        <div onclick="menuSave()">Save...</div>
     </div>
     <script>
         function updateClock() {
@@ -211,6 +252,34 @@
          updateTimerDisplay();
         }
                 
+        // Burger menu
+        function toggleMenu(e) {
+            e.stopPropagation();
+            document.getElementById('menu_popup').classList.toggle('open');
+        }
+        function closeMenu() {
+            document.getElementById('menu_popup').classList.remove('open');
+        }
+        document.addEventListener('click', closeMenu);
+
+        function menuClear() {
+            closeMenu();
+            if (!confirm('Reset the timer, frame number and all frame times?')) return;
+            stopTimer();
+            time = 0;
+            frame = 1;
+            updateTimerDisplay();
+            document.getElementById('frame_label').textContent = 'Frame: 1';
+            for (let i = 1; i <= 10; i++) {
+                document.getElementById('f' + i).innerHTML = '';
+                document.getElementById('bf' + i).value = '';
+            }
+        }
+        function menuSave() {
+            closeMenu();
+            alert('Save - not implemented yet (placeholder).');
+        }
+
         // Prevent phone from sleeping
         let wakeLock = null;
         async function requestWakeLock() {
