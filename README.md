@@ -1,4 +1,4 @@
-# mc_repo
+# mc_repo  d:\projects\mc_repo
 
 App built by  Kodular.io
 
@@ -10,3 +10,6 @@ Add index.html file to resources  and load  file:///android_asset/index.html   i
 
 Site URL:
 https://wonderful-tree-036326603.4.azurestaticapps.net
+
+
+Appname: snookertimer    staticwebapp   in   MC1 resource group Work VS Subscription
