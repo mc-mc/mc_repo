@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hangman</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef2ee;
+    --grid: rgba(31, 42, 68, 0.08);
+    --ink: #1f2a44;
+    --pencil: #5b6577;
+    --key: #fbfcfa;
+    --key-border: #b9c2cf;
+    --good: #2f7d52;
+    --bad: #c8372d;
+    --accent: #1f2a44;
+    --accent-text: #eef2ee;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141a28;
+      --grid: rgba(220, 230, 245, 0.06);
+      --ink: #e6ebf5;
+      --pencil: #9aa5b8;
+      --key: #1d2538;
+      --key-border: #3a465f;
+      --good: #6cc790;
+      --bad: #ff7a6e;
+      --accent: #e6ebf5;
+      --accent-text: #141a28;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141a28;
+    --grid: rgba(220, 230, 245, 0.06);
+    --ink: #e6ebf5;
+    --pencil: #9aa5b8;
+    --key: #1d2538;
+    --key-border: #3a465f;
+    --good: #6cc790;
+    --bad: #ff7a6e;
+    --accent: #e6ebf5;
+    --accent-text: #141a28;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+  }
+  main {
+    width: 100%;
+    max-width: 560px;
+    padding: 20px 16px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .stats { color: var(--pencil); font-size: 0.9rem; text-align: right; }
+  .stats b { color: var(--ink); font-weight: 800; }
+
+  .hint {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    color: var(--pencil);
+    font-size: 0.95rem;
+  }
+  .hint strong { color: var(--ink); font-weight: 800; }
+
+  svg.gallows { width: min(62vw, 230px); height: auto; }
+  .gallows line, .gallows circle, .gallows path {
+    fill: none;
+    stroke: var(--ink);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .gallows .frame { stroke: var(--pencil); }
+  .gallows .part {
+    opacity: 0;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    transition: opacity 0.1s, stroke-dashoffset 0.35s ease-out;
+  }
+  .gallows .part.on { opacity: 1; stroke-dashoffset: 0; }
+  .gallows.lost .part { stroke: var(--bad); }
+  .gallows.won .part { stroke: var(--good); }
+
+  .word {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    min-height: 3.4rem;
+    margin: 4px 0 0;
+  }
+  .slot {
+    width: 2.1rem;
+    height: 3rem;
+    border-bottom: 4px solid var(--ink);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 1.15;
+  }
+  .slot.missed { color: var(--bad); }
+  .slot.space { border-bottom-color: transparent; width: 1rem; }
+
+  .status {
+    margin: 0;
+    min-height: 1.5em;
+    font-size: 1.05rem;
+    font-weight: 500;
+    text-align: center;
+  }
+  .status.won { color: var(--good); font-weight: 800; }
+  .status.lost { color: var(--bad); font-weight: 800; }
+  .misses { color: var(--pencil); font-size: 0.9rem; min-height: 1.3em; margin: -6px 0 0; text-align: center; }
+
+  .keyboard {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 6px;
+    width: 100%;
+  }
+  .keyboard button {
+    appearance: none;
+    font: inherit;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 1.05rem;
+    padding: 0;
+    height: 2.7rem;
+    border-radius: 8px;
+    border: 1.5px solid var(--key-border);
+    background: var(--key);
+    color: var(--ink);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .keyboard button:hover:not(:disabled) { border-color: var(--ink); }
+  .keyboard button:disabled { cursor: default; }
+  .keyboard button.hit { background: var(--good); border-color: var(--good); color: var(--paper); }
+  .keyboard button.miss { opacity: 0.35; text-decoration: line-through; }
+
+  .new {
+    appearance: none;
+    font: inherit;
+    font-weight: 800;
+    font-size: 1rem;
+    padding: 0.7rem 1.6rem;
+    border-radius: 999px;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+
+  :focus-visible { outline: 3px solid var(--good); outline-offset: 2px; }
+
+  @media (max-width: 420px) {
+    .keyboard { grid-template-columns: repeat(7, 1fr); }
+    .slot { width: 1.7rem; font-size: 1.7rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gallows .part { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Hangman</h1>
+    <div class="stats" id="stats" aria-label="Your record"></div>
+  </header>
+
+  <div class="hint">
+    <span>Category: <strong id="category"></strong></span>
+    <span>Misses: <strong id="missCount">0</strong> / 6</span>
+  </div>
+
+  <svg class="gallows" id="gallows" viewBox="0 0 200 230" role="img" aria-label="Hangman drawing">
+    <line class="frame" x1="20" y1="215" x2="120" y2="215"/>
+    <line class="frame" x1="50" y1="215" x2="50" y2="20"/>
+    <line class="frame" x1="50" y1="20" x2="140" y2="20"/>
+    <line class="frame" x1="140" y1="20" x2="140" y2="48"/>
+    <circle class="part" cx="140" cy="68" r="20"/>
+    <line class="part" x1="140" y1="88" x2="140" y2="150"/>
+    <line class="part" x1="140" y1="104" x2="112" y2="130"/>
+    <line class="part" x1="140" y1="104" x2="168" y2="130"/>
+    <line class="part" x1="140" y1="150" x2="116" y2="190"/>
+    <line class="part" x1="140" y1="150" x2="164" y2="190"/>
+  </svg>
+
+  <div class="word" id="word" aria-label="Word to guess"></div>
+  <p class="status" id="status" role="status" aria-live="polite"></p>
+  <p class="misses" id="misses"></p>
+
+  <div class="keyboard" id="keyboard"></div>
+
+  <button class="new" id="newGame" type="button">New word</button>
+</main>
+
+<script>
+  const WORDS = {
+    Animals: ["elephant", "giraffe", "penguin", "dolphin", "kangaroo", "octopus", "hedgehog", "crocodile", "flamingo", "squirrel", "butterfly", "chameleon"],
+    Food: ["spaghetti", "pancake", "avocado", "broccoli", "chocolate", "sandwich", "pineapple", "dumpling", "marmalade", "cinnamon", "blueberry", "croissant"],
+    Places: ["lighthouse", "volcano", "desert", "glacier", "airport", "museum", "harbour", "waterfall", "castle", "library", "island", "canyon"],
+    Things: ["umbrella", "telescope", "backpack", "bicycle", "keyboard", "compass", "notebook", "lantern", "puzzle", "trampoline", "hourglass", "skateboard"]
+  };
+  const MAX_MISSES = 6;
+  const ALL = Object.entries(WORDS).flatMap(([cat, list]) => list.map(w => ({ word: w, cat })));
+
+  const el = {
+    word: document.getElementById("word"),
+    status: document.getElementById("status"),
+    misses: document.getElementById("misses"),
+    missCount: document.getElementById("missCount"),
+    category: document.getElementById("category"),
+    keyboard: document.getElementById("keyboard"),
+    gallows: document.getElementById("gallows"),
+    stats: document.getElementById("stats"),
+    newGame: document.getElementById("newGame")
+  };
+  const parts = el.gallows.querySelectorAll(".part");
+
+  let current, guessed, wrong, over, lastWord = "";
+  let stats = { wins: 0, losses: 0, streak: 0 };
+
+  try {
+    const saved = JSON.parse(localStorage.getItem("hangman-stats") || "null");
+    if (saved && typeof saved.wins === "number") stats = saved;
+  } catch (e) { /* storage unavailable: keep defaults */ }
+
+  function saveStats() {
+    try { localStorage.setItem("hangman-stats", JSON.stringify(stats)); } catch (e) {}
+  }
+
+  function renderStats() {
+    el.stats.innerHTML = `Won <b>${stats.wins}</b> &nbsp; Lost <b>${stats.losses}</b> &nbsp; Streak <b>${stats.streak}</b>`;
+  }
+
+  function buildKeyboard() {
+    el.keyboard.innerHTML = "";
+    for (const ch of "abcdefghijklmnopqrstuvwxyz") {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = ch;
+      b.dataset.letter = ch;
+      b.setAttribute("aria-label", "Guess " + ch);
+      b.addEventListener("click", () => guess(ch));
+      el.keyboard.appendChild(b);
+    }
+  }
+
+  function start() {
+    let pick;
+    do { pick = ALL[Math.floor(Math.random() * ALL.length)]; } while (pick.word === lastWord);
+    current = pick;
+    lastWord = pick.word;
+    guessed = new Set();
+    wrong = 0;
+    over = false;
+    el.category.textContent = pick.cat;
+    el.gallows.classList.remove("won", "lost");
+    el.status.className = "status";
+    el.status.textContent = "Pick a letter.";
+    buildKeyboard();
+    render();
+  }
+
+  function render() {
+    // word slots
+    el.word.innerHTML = "";
+    for (const ch of current.word) {
+      const s = document.createElement("span");
+      s.className = "slot";
+      if (guessed.has(ch)) s.textContent = ch;
+      else if (over) { s.textContent = ch; s.classList.add("missed"); }
+      el.word.appendChild(s);
+    }
+    // keyboard state
+    el.keyboard.querySelectorAll("button").forEach(b => {
+      const l = b.dataset.letter;
+      const used = guessed.has(l);
+      b.disabled = used || over;
+      b.classList.toggle("hit", used && current.word.includes(l));
+      b.classList.toggle("miss", used && !current.word.includes(l));
+    });
+    // gallows
+    parts.forEach((p, i) => p.classList.toggle("on", i < wrong));
+    el.missCount.textContent = wrong;
+    const missed = [...guessed].filter(l => !current.word.includes(l));
+    el.misses.textContent = missed.length ? "Missed: " + missed.join(" ").toUpperCase() : "";
+  }
+
+  function guess(letter) {
+    if (over || guessed.has(letter)) return;
+    guessed.add(letter);
+    if (!current.word.includes(letter)) wrong++;
+
+    const solved = [...current.word].every(c => guessed.has(c));
+    if (solved) {
+      over = true;
+      stats.wins++; stats.streak++;
+      el.gallows.classList.add("won");
+      el.status.className = "status won";
+      el.status.textContent = "You got it!";
+      saveStats(); renderStats();
+    } else if (wrong >= MAX_MISSES) {
+      over = true;
+      stats.losses++; stats.streak = 0;
+      el.gallows.classList.add("lost");
+      el.status.className = "status lost";
+      el.status.textContent = "Out of misses. The word was " + current.word + ".";
+      saveStats(); renderStats();
+    } else {
+      const left = MAX_MISSES - wrong;
+      el.status.textContent = current.word.includes(letter)
+        ? "Yes, there's a " + letter.toUpperCase() + "."
+        : "No " + letter.toUpperCase() + ". " + left + (left === 1 ? " miss" : " misses") + " left.";
+    }
+    render();
+    if (over) el.newGame.focus();
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[a-z]$/i.test(e.key)) guess(e.key.toLowerCase());
+  });
+  el.newGame.addEventListener("click", start);
+
+  renderStats();
+  start();
+</script>
+</body>
+</html>
