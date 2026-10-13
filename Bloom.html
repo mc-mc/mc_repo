@@ -226,7 +226,14 @@
   .status.lost { color: var(--bad); font-weight: 800; }
   .misses { color: var(--muted); font-size: 0.9rem; min-height: 1.3em; margin: -6px 0 0; text-align: center; }
 
-  .keyboard { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; width: 100%; }
+  .keyboard { width: 100%; }
+  .keyboard.layout-abc { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
+  .keyboard.layout-qwerty { display: flex; flex-direction: column; gap: 6px; }
+  .krow { display: flex; gap: 6px; margin: 0 auto; }
+  .krow button { flex: 1 1 0; min-width: 0; }
+  .krow.r1 { width: 100%; }
+  .krow.r2 { width: 90%; }
+  .krow.r3 { width: 80%; }
   .keyboard button {
     appearance: none;
     font: inherit;
@@ -246,6 +253,14 @@
   .keyboard button:disabled { cursor: default; }
   .keyboard button.hit { background: var(--good); border-color: var(--good); color: var(--paper); }
   .keyboard button.miss { opacity: 0.35; text-decoration: line-through; }
+  .keyboard button.keyswap {
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    border-style: dashed;
+    background: transparent;
+    color: var(--muted);
+  }
+  .keyboard button.keyswap:hover { color: var(--ink); border-color: var(--ink); }
 
   .new {
     appearance: none;
@@ -263,7 +278,7 @@
   :focus-visible { outline: 3px solid var(--good); outline-offset: 2px; }
 
   @media (max-width: 420px) {
-    .keyboard { grid-template-columns: repeat(7, 1fr); }
+    .keyboard.layout-abc { grid-template-columns: repeat(7, 1fr); }
     .slot { width: 1.7rem; font-size: 1.7rem; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -312,47 +327,7 @@
       </g>
     </g>
 
-    <g transform="translate(150 40) scale(0.9)">
-      <g class="bfly-in" style="--sx:150px;--sy:-40px;--d:0.4s;--w1:#f8a64a;--w2:#d9622b">
-        <g class="bfly-hover">
-          <g class="wings">
-            <g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>
-            <g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>
-          </g>
-          <ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"/>
-          <circle class="bf-body" cx="0" cy="-7" r="2"/>
-          <path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"/>
-        </g>
-      </g>
-    </g>
-
-    <g transform="translate(50 58) scale(0.8)">
-      <g class="bfly-in" style="--sx:-130px;--sy:-30px;--d:1.1s;--w1:#7db4f7;--w2:#3f77c9">
-        <g class="bfly-hover">
-          <g class="wings">
-            <g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>
-            <g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>
-          </g>
-          <ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"/>
-          <circle class="bf-body" cx="0" cy="-7" r="2"/>
-          <path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"/>
-        </g>
-      </g>
-    </g>
-
-    <g transform="translate(160 104) scale(0.7)">
-      <g class="bfly-in" style="--sx:140px;--sy:60px;--d:1.8s;--w1:#f7e26b;--w2:#d1a31f">
-        <g class="bfly-hover">
-          <g class="wings">
-            <g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>
-            <g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>
-          </g>
-          <ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"/>
-          <circle class="bf-body" cx="0" cy="-7" r="2"/>
-          <path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"/>
-        </g>
-      </g>
-    </g>
+    <g id="butterflies"></g>
 
     <path class="pot-body" d="M73 185 L127 185 L121 215 L79 215 Z"/>
     <path class="pot-shade" d="M110 185 L127 185 L121 215 L106 215 Z" opacity="0.45"/>
@@ -393,6 +368,7 @@
     category: document.getElementById("category"),
     keyboard: document.getElementById("keyboard"),
     art: document.getElementById("art"),
+    butterflies: document.getElementById("butterflies"),
     stats: document.getElementById("stats"),
     newGame: document.getElementById("newGame")
   };
@@ -419,17 +395,57 @@
     el.stats.innerHTML = `Bloomed <b>${stats.wins}</b> &nbsp; Wilted <b>${stats.losses}</b> &nbsp; Streak <b>${stats.streak}</b>`;
   }
 
+  const LAYOUT_KEY = "bloom-layout";
+  let layout = "abc"; // "abc" = alphabetical, "qwerty"
+  try {
+    const savedLayout = localStorage.getItem(LAYOUT_KEY);
+    if (savedLayout === "abc" || savedLayout === "qwerty") layout = savedLayout;
+  } catch (e) {}
+
+  function makeKey(ch) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = ch;
+    b.dataset.letter = ch;
+    b.setAttribute("aria-label", "Guess " + ch);
+    b.addEventListener("click", () => guess(ch));
+    return b;
+  }
+
   function buildKeyboard() {
     el.keyboard.innerHTML = "";
-    for (const ch of "abcdefghijklmnopqrstuvwxyz") {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = ch;
-      b.dataset.letter = ch;
-      b.setAttribute("aria-label", "Guess " + ch);
-      b.addEventListener("click", () => guess(ch));
-      el.keyboard.appendChild(b);
+    el.keyboard.className = "keyboard layout-" + layout;
+
+    // layout switch key: always sits next to Z
+    const swap = document.createElement("button");
+    swap.type = "button";
+    swap.id = "keySwap";
+    swap.className = "keyswap";
+    swap.textContent = layout === "qwerty" ? "ABC" : "QWE";
+    swap.setAttribute("aria-label", layout === "qwerty" ? "Switch to alphabetical keyboard" : "Switch to QWERTY keyboard");
+    swap.addEventListener("click", toggleLayout);
+
+    if (layout === "qwerty") {
+      ["qwertyuiop", "asdfghjkl", "zxcvbnm"].forEach((letters, r) => {
+        const row = document.createElement("div");
+        row.className = "krow r" + (r + 1);
+        if (r === 2) row.appendChild(swap); // left of Z
+        for (const ch of letters) row.appendChild(makeKey(ch));
+        el.keyboard.appendChild(row);
+      });
+    } else {
+      for (const ch of "abcdefghijklmnopqrstuvwxyz") el.keyboard.appendChild(makeKey(ch));
+      el.keyboard.appendChild(swap); // right of Z
     }
+  }
+
+  function toggleLayout() {
+    layout = layout === "qwerty" ? "abc" : "qwerty";
+    try { localStorage.setItem(LAYOUT_KEY, layout); } catch (e) {}
+    buildKeyboard();
+    render(); // restore hit/miss/disabled states on the new keys
+    const s = document.getElementById("keySwap");
+    if (s) s.focus({ preventScroll: true });
   }
 
   function start() {
@@ -442,6 +458,7 @@
     over = false;
     el.category.textContent = pick.cat;
     el.art.classList.remove("won", "lost");
+    el.butterflies.innerHTML = "";
     el.status.className = "status";
     el.status.textContent = "Pick a letter to keep the plant healthy.";
     el.newGame.textContent = "New word";
@@ -458,7 +475,7 @@
       else if (over) { s.textContent = ch; s.classList.add("missed"); }
       el.word.appendChild(s);
     }
-    el.keyboard.querySelectorAll("button").forEach(b => {
+    el.keyboard.querySelectorAll("button[data-letter]").forEach(b => {
       const l = b.dataset.letter;
       const used = guessed.has(l);
       b.disabled = used || over;
@@ -476,6 +493,43 @@
     el.misses.textContent = missed.length ? "Missed: " + missed.join(" ").toUpperCase() : "";
   }
 
+  // One butterfly per win in the current streak (capped so the scene stays readable)
+  const BF_MAX = 24;
+  const BF_COLOURS = [
+    ["#f8a64a", "#d9622b"], ["#7db4f7", "#3f77c9"], ["#f7e26b", "#d1a31f"],
+    ["#d59cf0", "#9a4fc4"], ["#ff8fa3", "#d6455f"], ["#8be0b5", "#2f9c6b"]
+  ];
+  const BF_ART =
+    '<g class="bfly-hover"><g class="wings">' +
+    '<g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>' +
+    '<g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"/><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"/></g>' +
+    '</g>' +
+    '<ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"/>' +
+    '<circle class="bf-body" cx="0" cy="-7" r="2"/>' +
+    '<path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"/>' +
+    '</g>';
+
+  function spawnButterflies(streak) {
+    const n = Math.min(streak, BF_MAX);
+    const scale = Math.max(0.5, 0.9 - n * 0.02);
+    let html = "";
+    for (let k = 0; k < n; k++) {
+      // spread them around the flower on a spiral
+      const ang = -0.6 + k * 2.399;
+      const r = 40 + 16 * Math.sqrt(k);
+      const x = Math.min(188, Math.max(12, 100 + r * Math.cos(ang) * 1.2));
+      const y = Math.min(150, Math.max(10, 70 + r * Math.sin(ang) * 0.85));
+      const sx = (x >= 100 ? 1 : -1) * (110 + (k * 17) % 50);
+      const sy = -50 + (k * 29) % 90;
+      const delay = 0.5 + Math.min(k * 0.3, 4);
+      const c = BF_COLOURS[k % BF_COLOURS.length];
+      html += '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + scale.toFixed(2) + ')">' +
+        '<g class="bfly-in" style="--sx:' + sx + 'px;--sy:' + sy + 'px;--d:' + delay.toFixed(2) + 's;--w1:' + c[0] + ';--w2:' + c[1] + '">' +
+        BF_ART + '</g></g>';
+    }
+    el.butterflies.innerHTML = html;
+  }
+
   function guess(letter) {
     if (over || guessed.has(letter)) return;
     guessed.add(letter);
@@ -485,9 +539,11 @@
     if (solved) {
       over = true;
       stats.wins++; stats.streak++;
+      spawnButterflies(stats.streak);
       el.art.classList.add("won");
       el.status.className = "status won";
-      el.status.textContent = "It bloomed! The word was " + current.word + ".";
+      el.status.textContent = "It bloomed! The word was " + current.word + "." +
+        (stats.streak > 1 ? " " + stats.streak + " in a row." : "");
       el.newGame.textContent = "Plant another";
       saveStats(); renderStats();
     } else if (wrong >= MAX_MISSES) {
