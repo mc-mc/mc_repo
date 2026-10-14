@@ -201,20 +201,22 @@
 
   .word {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 8px;
+    gap: var(--slot-gap, 8px);
+    width: 100%;
     min-height: 3.4rem;
     margin: 4px 0 0;
   }
   .slot {
-    width: 2.1rem;
-    height: 3rem;
-    border-bottom: 4px solid var(--ink);
+    flex: none;
+    width: var(--slot-w, 34px);
+    height: var(--slot-h, 48px);
+    border-bottom: var(--slot-line, 4px) solid var(--ink);
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    font-size: 2rem;
+    font-size: var(--slot-font, 32px);
     font-weight: 800;
     text-transform: uppercase;
     line-height: 1.15;
@@ -279,7 +281,6 @@
 
   @media (max-width: 420px) {
     .keyboard.layout-abc { grid-template-columns: repeat(7, 1fr); }
-    .slot { width: 1.7rem; font-size: 1.7rem; }
   }
   @media (prefers-reduced-motion: reduce) {
     .plant, .leaf, .flower, .stem, .bud { transition: none; }
@@ -448,22 +449,106 @@
     if (s) s.focus({ preventScroll: true });
   }
 
-  function start() {
-    let pick;
-    do { pick = ALL[Math.floor(Math.random() * ALL.length)]; } while (pick.word === lastWord);
-    current = pick;
-    lastWord = pick.word;
-    guessed = new Set();
-    wrong = 0;
+  // ---- Save the game in progress so a refresh can't be used to re-roll the word
+  const GAME_KEY = "bloom-game";
+
+  function saveGame() {
+    try {
+      if (over) localStorage.removeItem(GAME_KEY);
+      else localStorage.setItem(GAME_KEY, JSON.stringify({ i: ALL.indexOf(current), g: [...guessed].join("") }));
+    } catch (e) {}
+  }
+
+  function loadGame() {
+    try {
+      const s = JSON.parse(localStorage.getItem(GAME_KEY) || "null");
+      if (!s || typeof s.i !== "number" || !ALL[s.i] || typeof s.g !== "string") return null;
+      return s;
+    } catch (e) { return null; }
+  }
+
+  let giveUpArmed = false, giveUpTimer = null;
+
+  function start(saved) {
+    clearTimeout(giveUpTimer);
+    giveUpArmed = false;
+
+    let resumed = false;
+    if (saved) {
+      const entry = ALL[saved.i];
+      const g = new Set(saved.g.split("").filter(c => /^[a-z]$/.test(c)));
+      const miss = [...g].filter(c => !entry.word.includes(c)).length;
+      const solved = [...entry.word].every(c => g.has(c));
+      if (!solved && miss < MAX_MISSES) {
+        current = entry; guessed = g; wrong = miss; resumed = true;
+      }
+    }
+    if (!resumed) {
+      let pick;
+      do { pick = ALL[Math.floor(Math.random() * ALL.length)]; } while (pick.word === lastWord);
+      current = pick;
+      guessed = new Set();
+      wrong = 0;
+    }
+    lastWord = current.word;
     over = false;
-    el.category.textContent = pick.cat;
+    el.category.textContent = current.cat;
     el.art.classList.remove("won", "lost");
     el.butterflies.innerHTML = "";
     el.status.className = "status";
-    el.status.textContent = "Pick a letter to keep the plant healthy.";
+    el.status.textContent = resumed && guessed.size > 0
+      ? "Welcome back! Picking up where you left off."
+      : "Pick a letter to keep the plant healthy.";
     el.newGame.textContent = "New word";
     buildKeyboard();
     render();
+    saveGame();
+  }
+
+  // Once you've made a guess, the button becomes "Give up" (two taps) and counts as a loss.
+  function onNewGame() {
+    if (!over && guessed.size > 0) {
+      if (!giveUpArmed) {
+        giveUpArmed = true;
+        el.newGame.textContent = "Tap again to give up";
+        giveUpTimer = setTimeout(() => { giveUpArmed = false; render(); }, 3000);
+        return;
+      }
+      clearTimeout(giveUpTimer);
+      giveUpArmed = false;
+      giveUp();
+    } else {
+      start();
+    }
+  }
+
+  function giveUp() {
+    over = true;
+    stats.losses++; stats.streak = 0;
+    el.art.classList.add("lost");
+    el.status.className = "status lost";
+    el.status.textContent = "You gave up. The word was " + current.word + ".";
+    el.newGame.textContent = "Try again";
+    saveStats(); renderStats(); saveGame();
+    render();
+    el.newGame.focus();
+  }
+
+  // Keep the word on a single line: shrink slots, gaps and letters together if it is too wide
+  function fitWord() {
+    if (!current) return;
+    const avail = el.word.clientWidth;
+    if (!avail) return;
+    const n = current.word.length;
+    const W = 34, GAP = 8, H = 48, FONT = 32, LINE = 4;
+    const natural = n * W + (n - 1) * GAP;
+    const s = Math.min(1, (avail - 1) / natural);
+    const set = (k, v) => el.word.style.setProperty(k, v);
+    set("--slot-w", (W * s).toFixed(2) + "px");
+    set("--slot-h", (H * s).toFixed(2) + "px");
+    set("--slot-gap", (GAP * s).toFixed(2) + "px");
+    set("--slot-font", (FONT * s).toFixed(2) + "px");
+    set("--slot-line", Math.max(2, LINE * s).toFixed(2) + "px");
   }
 
   function render() {
@@ -475,6 +560,7 @@
       else if (over) { s.textContent = ch; s.classList.add("missed"); }
       el.word.appendChild(s);
     }
+    fitWord();
     el.keyboard.querySelectorAll("button[data-letter]").forEach(b => {
       const l = b.dataset.letter;
       const used = guessed.has(l);
@@ -491,6 +577,7 @@
     el.leafCount.textContent = won ? MAX_MISSES : MAX_MISSES - wrong;
     const missed = [...guessed].filter(l => !current.word.includes(l));
     el.misses.textContent = missed.length ? "Missed: " + missed.join(" ").toUpperCase() : "";
+    if (!over && !giveUpArmed) el.newGame.textContent = guessed.size > 0 ? "Give up" : "New word";
   }
 
   // One butterfly per win in the current streak (capped so the scene stays readable)
@@ -532,6 +619,7 @@
 
   function guess(letter) {
     if (over || guessed.has(letter)) return;
+    if (giveUpArmed) { giveUpArmed = false; clearTimeout(giveUpTimer); }
     guessed.add(letter);
     if (!current.word.includes(letter)) wrong++;
 
@@ -561,6 +649,7 @@
         : "No " + letter.toUpperCase() + ". " + left + (left === 1 ? " leaf" : " leaves") + " left.";
     }
     render();
+    saveGame();
     if (over) el.newGame.focus();
   }
 
@@ -568,10 +657,11 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (/^[a-z]$/i.test(e.key)) guess(e.key.toLowerCase());
   });
-  el.newGame.addEventListener("click", start);
+  el.newGame.addEventListener("click", onNewGame);
+  window.addEventListener("resize", fitWord); // also fires on rotate
 
   renderStats();
-  start();
+  start(loadGame());
 </script>
 </body>
 </html>
