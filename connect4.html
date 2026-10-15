@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect 4</title>
+<style>
+  :root {
+    --cell: min(11vw, 72px);
+    --gap: calc(var(--cell) * 0.12);
+    --board: #1d4ed8;
+    --board-dark: #1e3a8a;
+    --human: #ef4444;
+    --human-dark: #b91c1c;
+    --ai: #facc15;
+    --ai-dark: #ca8a04;
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --text: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(circle at top, #1e293b, var(--bg));
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+  }
+  h1 { margin: 8px 0 12px; letter-spacing: 2px; }
+  h1 .r { color: var(--human); }
+  h1 .y { color: var(--ai); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    background: var(--panel); padding: 10px 14px; border-radius: 12px;
+    margin-bottom: 12px;
+  }
+  .controls label { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  select, button {
+    font: inherit; font-size: 14px;
+    padding: 6px 10px; border-radius: 8px; border: 1px solid #475569;
+    background: #0f172a; color: var(--text); cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: #334155; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  .scores { display: flex; gap: 18px; margin-bottom: 8px; font-size: 15px; }
+  .scores span b { font-size: 18px; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+  #status { height: 28px; font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .thinking::after { content: ""; animation: dots 1.2s steps(4) infinite; }
+  @keyframes dots { 0%{content:""} 25%{content:"."} 50%{content:".."} 75%{content:"..."} }
+
+  .wrap { position: relative; }
+  #preview {
+    display: grid;
+    grid-template-columns: repeat(7, var(--cell));
+    gap: var(--gap);
+    padding: 0 var(--gap);
+    height: calc(var(--cell) + 6px);
+  }
+  #preview div { width: var(--cell); height: var(--cell); border-radius: 50%; opacity: 0; transition: opacity .1s; }
+  #preview div.show { opacity: .55; }
+
+  #board {
+    display: grid;
+    grid-template-columns: repeat(7, var(--cell));
+    grid-template-rows: repeat(6, var(--cell));
+    gap: var(--gap);
+    padding: var(--gap);
+    background: linear-gradient(var(--board), var(--board-dark));
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 2px 6px rgba(255,255,255,.2);
+    cursor: pointer;
+  }
+  #board.locked { cursor: default; }
+  .cell {
+    width: var(--cell); height: var(--cell);
+    border-radius: 50%;
+    background: var(--bg);
+    box-shadow: inset 0 4px 8px rgba(0,0,0,.6);
+    position: relative;
+  }
+  .disc {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    z-index: 2;
+    animation: drop var(--dur, .4s) cubic-bezier(.5,0,.75,0) forwards, bounce .15s ease-out var(--dur, .4s);
+  }
+  .disc.p1 { background: radial-gradient(circle at 35% 35%, #fca5a5, var(--human) 45%, var(--human-dark)); }
+  .disc.p2 { background: radial-gradient(circle at 35% 35%, #fef08a, var(--ai) 45%, var(--ai-dark)); }
+  .p1-bg { background: var(--human); }
+  .p2-bg { background: var(--ai); }
+  @keyframes drop {
+    from { transform: translateY(var(--fall)); }
+    to   { transform: translateY(0); }
+  }
+  @keyframes bounce {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-8%); }
+    100% { transform: translateY(0); }
+  }
+  .disc.win {
+    animation: pulse .8s ease-in-out infinite alternate;
+    box-shadow: 0 0 0 4px #fff, 0 0 18px 6px rgba(255,255,255,.8);
+  }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(.85); } }
+
+  .footer { margin-top: 14px; font-size: 13px; opacity: .6; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1><span class="r">CONNECT</span> <span class="y">4</span></h1>
+
+<div class="controls">
+  <label>Difficulty
+    <select id="difficulty">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+      <option value="expert">Expert</option>
+    </select>
+  </label>
+  <label>First move
+    <select id="first">
+      <option value="human">You</option>
+      <option value="ai">Computer</option>
+      <option value="alt">Alternate</option>
+    </select>
+  </label>
+  <button id="newGame">New Game</button>
+  <button id="undo">Undo</button>
+  <button id="resetScores">Reset Scores</button>
+</div>
+
+<div class="scores">
+  <span><span class="dot p1-bg"></span>You: <b id="sHuman">0</b></span>
+  <span><span class="dot p2-bg"></span>Computer: <b id="sAI">0</b></span>
+  <span>Draws: <b id="sDraw">0</b></span>
+</div>
+
+<div id="status"></div>
+
+<div class="wrap">
+  <div id="preview"></div>
+  <div id="board"></div>
+</div>
+
+<div class="footer">Click a column (or press keys 1–7) to drop your disc.</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------- Constants & state ----------
+  const ROWS = 6, COLS = 7, EMPTY = 0, HUMAN = 1, AI = 2;
+  const ORDER = [3, 2, 4, 1, 5, 0, 6];          // centre-first move ordering
+  const WIN = 1000000;
+
+  // depth = search depth; randomness = chance of a random (but not suicidal) move
+  const LEVELS = {
+    easy:   { depth: 1, randomness: 0.35 },
+    medium: { depth: 3, randomness: 0.10 },
+    hard:   { depth: 6, randomness: 0 },
+    expert: { depth: 9, randomness: 0 }
+  };
+
+  let board, heights, moveCount, history, gameOver, busy, aiStarts = false;
+  let scores = loadScores();
+
+  const boardEl = document.getElementById("board");
+  const previewEl = document.getElementById("preview");
+  const statusEl = document.getElementById("status");
+  const diffEl = document.getElementById("difficulty");
+  const firstEl = document.getElementById("first");
+  const undoBtn = document.getElementById("undo");
+
+  // ---------- Build DOM ----------
+  const cellEls = [];
+  for (let r = 0; r < ROWS; r++) {
+    cellEls.push([]);
+    for (let c = 0; c < COLS; c++) {
+      const d = document.createElement("div");
+      d.className = "cell";
+      d.dataset.col = c;
+      boardEl.appendChild(d);
+      cellEls[r].push(d);
+    }
+  }
+  const previewEls = [];
+  for (let c = 0; c < COLS; c++) {
+    const d = document.createElement("div");
+    d.className = "p1-bg";
+    previewEl.appendChild(d);
+    previewEls.push(d);
+  }
+
+  // ---------- Game logic ----------
+  function newGame() {
+    board = Array.from({ length: ROWS }, () => new Array(COLS).fill(EMPTY));
+    heights = new Array(COLS).fill(0);
+    moveCount = 0;
+    history = [];
+    gameOver = false;
+    busy = false;
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++) cellEls[r][c].innerHTML = "";
+
+    const f = firstEl.value;
+    if (f === "human") aiStarts = false;
+    else if (f === "ai") aiStarts = true;
+    else aiStarts = !aiStarts;
+
+    updateUndo();
+    if (aiStarts) aiTurn();
+    else setStatus("Your turn");
+  }
+
+  function canPlay(c) { return heights[c] < ROWS; }
+
+  function play(c, p) {
+    const r = ROWS - 1 - heights[c];
+    board[r][c] = p;
+    heights[c]++;
+    moveCount++;
+    return r;
+  }
+
+  function unplay(c) {
+    heights[c]--;
+    const r = ROWS - 1 - heights[c];
+    board[r][c] = EMPTY;
+    moveCount--;
+  }
+
+  // Returns array of winning cells (length >= 4) or null
+  function winCells(r, c) {
+    const p = board[r][c];
+    if (!p) return null;
+    const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    for (const [dr, dc] of dirs) {
+      const cells = [[r, c]];
+      for (const s of [1, -1]) {
+        let rr = r + dr * s, cc = c + dc * s;
+        while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && board[rr][cc] === p) {
+          cells.push([rr, cc]);
+          rr += dr * s; cc += dc * s;
+        }
+      }
+      if (cells.length >= 4) return cells;
+    }
+    return null;
+  }
+
+  function isWinAt(r, c) {
+    const p = board[r][c];
+    const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+    for (let i = 0; i < 4; i++) {
+      const dr = dirs[i][0], dc = dirs[i][1];
+      let n = 1;
+      let rr = r + dr, cc = c + dc;
+      while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && board[rr][cc] === p) { n++; rr += dr; cc += dc; }
+      rr = r - dr; cc = c - dc;
+      while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && board[rr][cc] === p) { n++; rr -= dr; cc -= dc; }
+      if (n >= 4) return true;
+    }
+    return false;
+  }
+
+  // ---------- AI: minimax with alpha-beta pruning ----------
+  function scoreWindow(a, b, c, d) {
+    let ai = 0, hu = 0;
+    if (a === AI) ai++; else if (a === HUMAN) hu++;
+    if (b === AI) ai++; else if (b === HUMAN) hu++;
+    if (c === AI) ai++; else if (c === HUMAN) hu++;
+    if (d === AI) ai++; else if (d === HUMAN) hu++;
+    if (ai && hu) return 0;
+    if (ai === 3) return 50;
+    if (ai === 2) return 10;
+    if (ai === 1) return 1;
+    if (hu === 3) return -60;
+    if (hu === 2) return -10;
+    if (hu === 1) return -1;
+    return 0;
+  }
+
+  function evaluate() {
+    let s = 0;
+    const b = board;
+    // centre column preference
+    for (let r = 0; r < ROWS; r++) {
+      if (b[r][3] === AI) s += 6; else if (b[r][3] === HUMAN) s -= 6;
+    }
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (c + 3 < COLS) s += scoreWindow(b[r][c], b[r][c + 1], b[r][c + 2], b[r][c + 3]);
+        if (r + 3 < ROWS) {
+          s += scoreWindow(b[r][c], b[r + 1][c], b[r + 2][c], b[r + 3][c]);
+          if (c + 3 < COLS) s += scoreWindow(b[r][c], b[r + 1][c + 1], b[r + 2][c + 2], b[r + 3][c + 3]);
+          if (c - 3 >= 0) s += scoreWindow(b[r][c], b[r + 1][c - 1], b[r + 2][c - 2], b[r + 3][c - 3]);
+        }
+      }
+    }
+    return s;
+  }
+
+  function minimax(depth, alpha, beta, maximizing) {
+    if (moveCount === ROWS * COLS) return 0;
+    if (depth === 0) return evaluate();
+    const p = maximizing ? AI : HUMAN;
+
+    // immediate win check (cheap and greatly improves pruning)
+    for (let i = 0; i < COLS; i++) {
+      const c = ORDER[i];
+      if (!canPlay(c)) continue;
+      const r = play(c, p);
+      const w = isWinAt(r, c);
+      unplay(c);
+      if (w) return maximizing ? WIN + depth : -(WIN + depth);
+    }
+
+    if (maximizing) {
+      let best = -Infinity;
+      for (let i = 0; i < COLS; i++) {
+        const c = ORDER[i];
+        if (!canPlay(c)) continue;
+        play(c, AI);
+        const v = minimax(depth - 1, alpha, beta, false);
+        unplay(c);
+        if (v > best) best = v;
+        if (best > alpha) alpha = best;
+        if (alpha >= beta) break;
+      }
+      return best;
+    } else {
+      let best = Infinity;
+      for (let i = 0; i < COLS; i++) {
+        const c = ORDER[i];
+        if (!canPlay(c)) continue;
+        play(c, HUMAN);
+        const v = minimax(depth - 1, alpha, beta, true);
+        unplay(c);
+        if (v < best) best = v;
+        if (best < beta) beta = best;
+        if (alpha >= beta) break;
+      }
+      return best;
+    }
+  }
+
+  function chooseMove(level) {
+    const { depth, randomness } = LEVELS[level];
+    const valid = ORDER.filter(canPlay);
+
+    // Always take a winning move
+    for (const c of valid) {
+      const r = play(c, AI); const w = isWinAt(r, c); unplay(c);
+      if (w) return c;
+    }
+
+    // Easy/medium: occasional random move (still blocks an immediate loss)
+    if (Math.random() < randomness) {
+      for (const c of valid) {
+        const r = play(c, HUMAN); const w = isWinAt(r, c); unplay(c);
+        if (w && Math.random() < 0.7) return c;   // usually blocks
+      }
+      return valid[Math.floor(Math.random() * valid.length)];
+    }
+
+    // Full search; collect all moves sharing the best score to vary play
+    let bestScore = -Infinity, bestMoves = [];
+    for (const c of valid) {
+      play(c, AI);
+      const v = minimax(depth - 1, -Infinity, Infinity, false);
+      unplay(c);
+      if (v > bestScore) { bestScore = v; bestMoves = [c]; }
+      else if (v === bestScore) bestMoves.push(c);
+    }
+    return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+  }
+
+  // ---------- UI ----------
+  function setStatus(text, thinking) {
+    statusEl.textContent = text;
+    statusEl.className = thinking ? "thinking" : "";
+  }
+
+  function renderDisc(r, c, p) {
+    const disc = document.createElement("div");
+    disc.className = "disc p" + p;
+    // fall distance: from above the board to this row
+    disc.style.setProperty("--fall", `calc(-${r + 1} * (var(--cell) + var(--gap)) - var(--gap))`);
+    disc.style.setProperty("--dur", (0.18 + 0.06 * r) + "s");
+    cellEls[r][c].appendChild(disc);
+  }
+
+  function makeMove(c, p) {
+    const r = play(c, p);
+    history.push(c);
+    renderDisc(r, c, p);
+    updateUndo();
+
+    const cells = winCells(r, c);
+    if (cells) {
+      gameOver = true;
+      setTimeout(() => {
+        cells.forEach(([rr, cc]) => {
+          const d = cellEls[rr][cc].firstChild;
+          if (d) d.classList.add("win");
+        });
+      }, 450);
+      lastResult = p === HUMAN ? "human" : "ai";
+      scores[lastResult]++;
+      setStatus(p === HUMAN ? "You win! 🎉" : "Computer wins!");
+      saveScores();
+    } else if (moveCount === ROWS * COLS) {
+      gameOver = true;
+      lastResult = "draw"; scores.draw++; saveScores();
+      setStatus("It's a draw.");
+    }
+    clearPreview();
+    return !gameOver;
+  }
+
+  function aiTurn() {
+    busy = true;
+    updateUndo();
+    boardEl.classList.add("locked");
+    setStatus("Computer is thinking", true);
+    // small delay so the UI repaints and the human's disc animates first
+    setTimeout(() => {
+      const start = performance.now();
+      const c = chooseMove(diffEl.value);
+      const wait = Math.max(0, 350 - (performance.now() - start));
+      setTimeout(() => {
+        busy = false;
+        boardEl.classList.remove("locked");
+        if (makeMove(c, AI)) setStatus("Your turn");
+        updateUndo();
+      }, wait);
+    }, 50);
+  }
+
+  function humanMove(c) {
+    if (gameOver || busy || !canPlay(c)) return;
+    if (makeMove(c, HUMAN)) aiTurn();
+  }
+
+  function undo() {
+    if (busy || history.length === 0) return;
+    // Undo back to the human's most recent move
+    const steps = (aiStarts ? history.length - 1 : history.length) % 2 === 1 ? 1 : 2;
+    for (let i = 0; i < steps && history.length; i++) {
+      const c = history.pop();
+      const r = ROWS - heights[c];
+      unplay(c);
+      cellEls[r][c].innerHTML = "";
+    }
+    if (gameOver) {
+      gameOver = false;   // reverse the score recorded for this game
+      undoScoreFix();
+    }
+    // clear any lingering win highlight
+    document.querySelectorAll(".disc.win").forEach(d => d.classList.remove("win"));
+    setStatus("Your turn");
+    updateUndo();
+  }
+
+  let lastResult = null;
+  function undoScoreFix() {
+    if (lastResult) { scores[lastResult]--; saveScores(); lastResult = null; }
+  }
+
+  function updateUndo() {
+    // human must have at least one move to undo
+    const humanMoves = aiStarts ? Math.floor(history.length / 2) : Math.ceil(history.length / 2);
+    undoBtn.disabled = busy || humanMoves === 0;
+  }
+
+  function clearPreview() { previewEls.forEach(d => d.classList.remove("show")); }
+
+  // ---------- Scores ----------
+  function loadScores() {
+    try { return JSON.parse(localStorage.getItem("c4scores")) || { human: 0, ai: 0, draw: 0 }; }
+    catch (e) { return { human: 0, ai: 0, draw: 0 }; }
+  }
+  function saveScores() {
+    try { localStorage.setItem("c4scores", JSON.stringify(scores)); } catch (e) {}
+    document.getElementById("sHuman").textContent = scores.human;
+    document.getElementById("sAI").textContent = scores.ai;
+    document.getElementById("sDraw").textContent = scores.draw;
+  }
+
+  // ---------- Events ----------
+  boardEl.addEventListener("click", e => {
+    const cell = e.target.closest(".cell");
+    if (cell) humanMove(+cell.dataset.col);
+  });
+  boardEl.addEventListener("mousemove", e => {
+    const cell = e.target.closest(".cell");
+    clearPreview();
+    if (!cell || gameOver || busy) return;
+    const c = +cell.dataset.col;
+    if (canPlay(c)) previewEls[c].classList.add("show");
+  });
+  boardEl.addEventListener("mouseleave", clearPreview);
+  document.addEventListener("keydown", e => {
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 7) humanMove(n - 1);
+  });
+  document.getElementById("newGame").addEventListener("click", () => { if (!busy) newGame(); });
+  undoBtn.addEventListener("click", undo);
+  document.getElementById("resetScores").addEventListener("click", () => {
+    scores = { human: 0, ai: 0, draw: 0 };
+    lastResult = null;
+    saveScores();
+  });
+
+  saveScores();
+  newGame();
+})();
+</script>
+</body>
+</html>
