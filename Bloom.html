@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bloom: a word guessing game</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
 <style>
   :root {
     --paper: #e6f2ec;
@@ -83,7 +80,7 @@
     background-image: linear-gradient(180deg, var(--paper) 0%, var(--paper) 45%, var(--paper-2) 100%);
     background-attachment: fixed;
     color: var(--ink);
-    font-family: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     display: flex;
     justify-content: center;
   }
@@ -181,7 +178,7 @@
   svg.won .bfly-hover {
     animation: bfly-bob 2.6s ease-in-out calc(var(--d) + 3.4s) infinite alternate;
   }
-  svg.won .wings { animation: bfly-flap 0.28s ease-in-out infinite alternate; }
+  svg.won .wings { animation: bfly-flap 0.28s ease-in-out infinite alternate; animation-delay: var(--flap-delay, 0s); }
   @keyframes bfly-in {
     0%   { opacity: 0; transform: translate(var(--sx), var(--sy)); }
     8%   { opacity: 1; }
@@ -197,6 +194,21 @@
   @keyframes bfly-flap {
     from { transform: scaleX(1); }
     to   { transform: scaleX(0.22); }
+  }
+  .bee-flight { visibility: hidden; }
+  svg.won .bee-flight { visibility: visible; animation: bee-visit 5s ease-in-out 0.4s both; }
+  .bee-wings { transform-box: fill-box; transform-origin: center; }
+  svg.won .bee-wings { animation: bfly-flap 0.11s ease-in-out infinite alternate; animation-delay: var(--bee-flap-delay, 0s); }
+  .bee-body { fill: #f6c445; stroke: #8c5b20; stroke-width: 1.5; }
+  .bee-stripe { stroke: #503b2b; stroke-width: 3; stroke-linecap: round; }
+  .bee-wing { fill: #e8f7f0; fill-opacity: 0.9; stroke: #91b9a8; stroke-width: 1; }
+  @keyframes bee-visit {
+    0% { opacity: 0; transform: translate(175px, 115px) scale(0.7); }
+    12% { opacity: 1; }
+    35% { transform: translate(130px, 72px) scale(1); }
+    58% { transform: translate(75px, 88px) scale(0.95); }
+    78% { transform: translate(126px, 118px) scale(0.9); }
+    100% { opacity: 1; transform: translate(100px, 62px) scale(0.9); }
   }
 
   .word {
@@ -227,6 +239,17 @@
   .status.won { color: var(--good); font-weight: 800; }
   .status.lost { color: var(--bad); font-weight: 800; }
   .misses { color: var(--muted); font-size: 0.9rem; min-height: 1.3em; margin: -6px 0 0; text-align: center; }
+  #debugWord { cursor: pointer; }
+  #debugWord:hover { color: var(--ink); }
+  .word-list-button {
+    appearance: none; border: 0; background: transparent; color: var(--muted);
+    font: inherit; font-size: 0.9em; padding: 0 2px; cursor: pointer;
+    vertical-align: baseline;
+  }
+  .word-list-button:hover { color: var(--ink); }
+  #debugRecentWords { width: 100%; color: var(--muted); font-size: 0.85rem; }
+  #debugRecentWords h2 { margin: 0 0 6px; color: var(--ink); font-size: 0.95rem; }
+  #debugRecentWords p { margin: 0; max-height: 180px; overflow-y: auto; overflow-wrap: anywhere; line-height: 1.6; }
 
   .keyboard { width: 100%; }
   .keyboard.layout-abc { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; }
@@ -277,6 +300,8 @@
     cursor: pointer;
   }
 
+  .game-actions { width: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+  .version { position: absolute; right: 0; color: var(--muted); font-size: 0.7rem; opacity: 0.8; }
   :focus-visible { outline: 3px solid var(--good); outline-offset: 2px; }
 
   @media (max-width: 420px) {
@@ -285,6 +310,8 @@
   @media (prefers-reduced-motion: reduce) {
     .plant, .leaf, .flower, .stem, .bud { transition: none; }
     svg.won .bfly-in, svg.won .bfly-hover, svg.won .wings { animation: none; }
+    svg.won .bee-flight { animation: none; opacity: 1; transform: translate(100px, 80px); }
+    svg.won .bee-wings { animation: none; }
     .leaf.sprout { animation: none; }
   }
 </style>
@@ -293,60 +320,68 @@
 <main>
   <header>
     <h1>Bloom</h1>
-    <div class="stats" id="stats" aria-label="Your record"></div>
+    <div class="stats" id="stats" aria-label="Your record">Bloomed <b>14</b> &nbsp; Wilted <b>1</b> &nbsp; Streak <b>12</b></div>
   </header>
 
   <div class="hint">
-    <span>Category: <strong id="category"></strong></span>
+    <span>Category: <strong id="category">Objects</strong></span>
     <span>Leaves: <strong id="leafCount">6</strong> / 6</span>
+    <span id="debugWord" hidden>Debug word: <strong></strong> <button id="wordListButton" class="word-list-button" type="button" aria-label="Open all valid words by category" title="Show all valid words">&#9998;</button></span>
   </div>
 
-  <svg class="plant-art" id="art" viewBox="0 0 200 230" role="img" aria-label="A potted plant with six leaves">
-    <line class="ground" x1="45" y1="217" x2="155" y2="217"/>
+  <svg class="plant-art won" id="art" viewBox="0 0 200 230" role="img" aria-label="A potted plant with six leaves">
+    <line class="ground" x1="45" y1="217" x2="155" y2="217"></line>
 
     <g class="plant">
-      <path class="stem" d="M100 174 C97 142 104 112 100 70"/>
+      <path class="stem" d="M100 174 C97 142 104 112 100 70"></path>
 
-      <g transform="translate(99 158)"><g class="leaf" style="--dx:-26px;--rot:-50deg"><path class="leaf-shape" transform="scale(-1 1) rotate(-22)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"/><path class="leaf-vein" transform="scale(-1 1) rotate(-22)" d="M4 0 L38 0"/></g></g>
-      <g transform="translate(101 144)"><g class="leaf" style="--dx:26px;--rot:50deg"><path class="leaf-shape" transform="rotate(-22)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"/><path class="leaf-vein" transform="rotate(-22)" d="M4 0 L38 0"/></g></g>
-      <g transform="translate(99 126)"><g class="leaf" style="--dx:-22px;--rot:-40deg"><path class="leaf-shape" transform="scale(-0.9 0.9) rotate(-26)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"/><path class="leaf-vein" transform="scale(-0.9 0.9) rotate(-26)" d="M4 0 L38 0"/></g></g>
-      <g transform="translate(101 112)"><g class="leaf" style="--dx:22px;--rot:40deg"><path class="leaf-shape" transform="scale(0.9) rotate(-26)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"/><path class="leaf-vein" transform="scale(0.9) rotate(-26)" d="M4 0 L38 0"/></g></g>
-      <g transform="translate(99 94)"><g class="leaf" style="--dx:-18px;--rot:-30deg"><path class="leaf-shape" transform="scale(-0.75 0.75) rotate(-32)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"/><path class="leaf-vein" transform="scale(-0.75 0.75) rotate(-32)" d="M4 0 L38 0"/></g></g>
-      <g transform="translate(101 82)"><g class="leaf" style="--dx:18px;--rot:30deg"><path class="leaf-shape" transform="scale(0.75) rotate(-32)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"/><path class="leaf-vein" transform="scale(0.75) rotate(-32)" d="M4 0 L38 0"/></g></g>
+      <g transform="translate(99 158)"><g class="leaf sprout" style="--dx: -26px; --rot: -50deg; --i: 0; --ox: 100% 90%;"><path class="leaf-shape" transform="scale(-1 1) rotate(-22)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"></path><path class="leaf-vein" transform="scale(-1 1) rotate(-22)" d="M4 0 L38 0"></path></g></g>
+      <g transform="translate(101 144)"><g class="leaf sprout" style="--dx: 26px; --rot: 50deg; --i: 1; --ox: 0% 90%;"><path class="leaf-shape" transform="rotate(-22)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"></path><path class="leaf-vein" transform="rotate(-22)" d="M4 0 L38 0"></path></g></g>
+      <g transform="translate(99 126)"><g class="leaf" style="--dx: -22px; --rot: -40deg; --i: 2; --ox: 100% 90%;"><path class="leaf-shape" transform="scale(-0.9 0.9) rotate(-26)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"></path><path class="leaf-vein" transform="scale(-0.9 0.9) rotate(-26)" d="M4 0 L38 0"></path></g></g>
+      <g transform="translate(101 112)"><g class="leaf" style="--dx: 22px; --rot: 40deg; --i: 3; --ox: 0% 90%;"><path class="leaf-shape" transform="scale(0.9) rotate(-26)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"></path><path class="leaf-vein" transform="scale(0.9) rotate(-26)" d="M4 0 L38 0"></path></g></g>
+      <g transform="translate(99 94)"><g class="leaf" style="--dx: -18px; --rot: -30deg; --i: 4; --ox: 100% 90%;"><path class="leaf-shape" transform="scale(-0.75 0.75) rotate(-32)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"></path><path class="leaf-vein" transform="scale(-0.75 0.75) rotate(-32)" d="M4 0 L38 0"></path></g></g>
+      <g transform="translate(101 82)"><g class="leaf" style="--dx: 18px; --rot: 30deg; --i: 5; --ox: 0% 90%;"><path class="leaf-shape" transform="scale(0.75) rotate(-32)" d="M0 0 C12 -15 36 -15 46 0 C36 15 12 15 0 0 Z"></path><path class="leaf-vein" transform="scale(0.75) rotate(-32)" d="M4 0 L38 0"></path></g></g>
 
-      <circle class="bud" cx="100" cy="66" r="8"/>
+      <circle class="bud" cx="100" cy="66" r="8"></circle>
       <g class="flower">
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(0 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(45 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(90 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(135 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(180 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(225 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(270 100 62)"/>
-        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(315 100 62)"/>
-        <circle class="centre" cx="100" cy="62" r="9"/>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(0 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(45 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(90 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(135 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(180 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(225 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(270 100 62)"></ellipse>
+        <ellipse class="petal" cx="100" cy="46" rx="8" ry="15" transform="rotate(315 100 62)"></ellipse>
+        <circle class="centre" cx="100" cy="62" r="9"></circle>
       </g>
     </g>
 
-    <g id="butterflies"></g>
+    <g id="butterflies"><g transform="translate(139.6 50.8) scale(0.66)"><g class="bfly-in" style="--sx:110px;--sy:-50px;--d:0.50s;--w1:#f8a64a;--w2:#d9622b;--flap-delay:-0.086s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(84.8 116.4) scale(0.66)"><g class="bfly-in" style="--sx:-127px;--sy:-21px;--d:0.80s;--w1:#7db4f7;--w2:#3f77c9;--flap-delay:-0.001s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(63.0 23.7) scale(0.66)"><g class="bfly-in" style="--sx:-144px;--sy:8px;--d:1.10s;--w1:#f7e26b;--w2:#d1a31f;--flap-delay:-0.263s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(177.3 87.8) scale(0.66)"><g class="bfly-in" style="--sx:111px;--sy:37px;--d:1.40s;--w1:#d59cf0;--w2:#9a4fc4;--flap-delay:-0.135s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(21.4 95.4) scale(0.66)"><g class="bfly-in" style="--sx:-128px;--sy:-24px;--d:1.70s;--w1:#ff8fa3;--w2:#d6455f;--flap-delay:-0.222s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(135.4 10.7) scale(0.66)"><g class="bfly-in" style="--sx:145px;--sy:5px;--d:2.00s;--w1:#8be0b5;--w2:#2f9c6b;--flap-delay:-0.170s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(132.0 133.4) scale(0.66)"><g class="bfly-in" style="--sx:112px;--sy:34px;--d:2.30s;--w1:#f8a64a;--w2:#d9622b;--flap-delay:-0.213s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(12.6 37.4) scale(0.66)"><g class="bfly-in" style="--sx:-129px;--sy:-27px;--d:2.60s;--w1:#7db4f7;--w2:#3f77c9;--flap-delay:-0.200s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(188.0 51.5) scale(0.66)"><g class="bfly-in" style="--sx:146px;--sy:2px;--d:2.90s;--w1:#f7e26b;--w2:#d1a31f;--flap-delay:-0.192s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(43.0 132.9) scale(0.66)"><g class="bfly-in" style="--sx:-113px;--sy:31px;--d:3.20s;--w1:#d59cf0;--w2:#9a4fc4;--flap-delay:-0.067s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(81.4 10.0) scale(0.66)"><g class="bfly-in" style="--sx:-130px;--sy:-30px;--d:3.50s;--w1:#ff8fa3;--w2:#d6455f;--flap-delay:-0.079s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g><g transform="translate(188.0 118.3) scale(0.66)"><g class="bfly-in" style="--sx:147px;--sy:-1px;--d:3.80s;--w1:#8be0b5;--w2:#2f9c6b;--flap-delay:-0.024s"><g class="bfly-hover"><g class="wings"><g><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g><g transform="scale(-1 1)"><path class="wing-a" d="M0 -1 C4 -16 20 -20 22 -8 C22 -2 10 2 0 0 Z"></path><path class="wing-b" d="M0 1 C10 3 18 6 14 14 C10 20 2 12 0 2 Z"></path></g></g><ellipse class="bf-body" cx="0" cy="2" rx="1.8" ry="8"></ellipse><circle class="bf-body" cx="0" cy="-7" r="2"></circle><path class="bf-feeler" d="M0 -8 Q-3 -14 -6 -15 M0 -8 Q3 -14 6 -15"></path></g></g></g></g>
 
-    <path class="pot-body" d="M73 185 L127 185 L121 215 L79 215 Z"/>
-    <path class="pot-shade" d="M110 185 L127 185 L121 215 L106 215 Z" opacity="0.45"/>
-    <rect class="pot-rim" x="68" y="174" width="64" height="13" rx="4"/>
+    <path class="pot-body" d="M73 185 L127 185 L121 215 L79 215 Z"></path>
+    <path class="pot-shade" d="M110 185 L127 185 L121 215 L106 215 Z" opacity="0.45"></path>
+    <rect class="pot-rim" x="68" y="174" width="64" height="13" rx="4"></rect>
   </svg>
 
-  <div class="word" id="word" aria-label="Word to guess"></div>
-  <p class="status" id="status" role="status" aria-live="polite"></p>
-  <p class="misses" id="misses"></p>
+  <div class="word" id="word" aria-label="Word to guess" style="--slot-w: 34.00px; --slot-h: 48.00px; --slot-gap: 8.00px; --slot-font: 32.00px; --slot-line: 4.00px;"><span class="slot">p</span><span class="slot">a</span><span class="slot">s</span><span class="slot">s</span><span class="slot">p</span><span class="slot">o</span><span class="slot">r</span><span class="slot">t</span></div>
+  <p class="status won" id="status" role="status" aria-live="polite">It bloomed! The word was passport. 12 in a row.</p>
+  <p class="misses" id="misses">Missed: E I</p>
 
-  <div class="keyboard" id="keyboard"></div>
+  <div class="keyboard layout-abc" id="keyboard"><button type="button" data-letter="a" aria-label="Guess a" disabled="" class="hit">a</button><button type="button" data-letter="b" aria-label="Guess b" disabled="">b</button><button type="button" data-letter="c" aria-label="Guess c" disabled="">c</button><button type="button" data-letter="d" aria-label="Guess d" disabled="">d</button><button type="button" data-letter="e" aria-label="Guess e" disabled="" class="miss">e</button><button type="button" data-letter="f" aria-label="Guess f" disabled="">f</button><button type="button" data-letter="g" aria-label="Guess g" disabled="">g</button><button type="button" data-letter="h" aria-label="Guess h" disabled="">h</button><button type="button" data-letter="i" aria-label="Guess i" disabled="" class="miss">i</button><button type="button" data-letter="j" aria-label="Guess j" disabled="">j</button><button type="button" data-letter="k" aria-label="Guess k" disabled="">k</button><button type="button" data-letter="l" aria-label="Guess l" disabled="">l</button><button type="button" data-letter="m" aria-label="Guess m" disabled="">m</button><button type="button" data-letter="n" aria-label="Guess n" disabled="">n</button><button type="button" data-letter="o" aria-label="Guess o" disabled="" class="hit">o</button><button type="button" data-letter="p" aria-label="Guess p" disabled="" class="hit">p</button><button type="button" data-letter="q" aria-label="Guess q" disabled="">q</button><button type="button" data-letter="r" aria-label="Guess r" disabled="" class="hit">r</button><button type="button" data-letter="s" aria-label="Guess s" disabled="" class="hit">s</button><button type="button" data-letter="t" aria-label="Guess t" disabled="" class="hit">t</button><button type="button" data-letter="u" aria-label="Guess u" disabled="">u</button><button type="button" data-letter="v" aria-label="Guess v" disabled="">v</button><button type="button" data-letter="w" aria-label="Guess w" disabled="">w</button><button type="button" data-letter="x" aria-label="Guess x" disabled="">x</button><button type="button" data-letter="y" aria-label="Guess y" disabled="">y</button><button type="button" data-letter="z" aria-label="Guess z" disabled="">z</button><button type="button" id="keySwap" class="keyswap" aria-label="Switch to QWERTY keyboard">QWE</button></div>
 
-  <button class="new" id="newGame" type="button">New word</button>
+  <div class="game-actions">
+    <button class="new" id="newGame" type="button">Plant another</button>
+    <span class="version">ver1.5</span>
+  </div>
+  <section id="debugRecentWords" hidden aria-label="Recent word history">
+    <h2>Recent words <span id="recentWordCount"></span></h2>
+    <p id="recentWordList"></p>
+  </section>
 </main>
 
 <script>
   const _K = "g4LLows-0n-th3-h1ll!";
-  const _D = "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";
+  const _D = "JlolIQ4bABdVAkgEAFJDHB0LBVMGUiopQwcWQ1cbRBpEV0IEQQQFT0tfLSIIFgFCX0JCFxxcXR1CQAREA1MpJAAQX05CAU4bDFpBDR0KAEAKXSIrAFsAXEUHXwYNXwEKRBgYRBVSIDVDFBtMXQtBEQddAQRUAxxAFVBgLwcSFllRBgETB0FEBF0NQEkGWT84CgVfQV8MXgANQQEYUAIYSQJGYDwKFhBCUwUBBA1fRAtQAkBTBlcvIwAZX19VB0MQDVZfREIPA1MXXSMiQwQWTFgBXwcNH14YUB4eThAYOCMdAxxEQwsBAwlfXx1CQBtOClYtOEMNFk9CDwEWHVVLCV0DQEIGWSkgQxMcQ1sLVFgOUkELXgJARgZOKSADEl9HUQlYFRofRgdQAA0NC1EhOR1bH0FRA0xYBVZIGloNGA0JVT47BxYfAV8dWQYBUEVEXhgYRBUYPC0BExIBQA9fBgdHARhdDRhYF0E/YB8YAU5FHkQaDR9fCVMOBVVLRiQlARgQSEIBXlgbUkEJXA0CRQJGYD8bFgFLWR1FWBtETARdAxsNE1s5Lw4ZX1lFHEYRER9bHV0YGVMCGDspDgQWQRwPQRYJR18HQh9AQBVZLSgGGx9CHAxMFgdcQ0RTCQ1XAkZgLgYEHEMcDUIWGlIBC14VA1UCGCg+DhAcQ1YCVFgNUkoEVEAKRBVGKTgTMRxCVFReBAlURQ1FGAUNF1UiLw4cFgFRGEIXCVdCRFMeA0IEWyAlQxQbQlMBQRUcVgEbUAIIVg5XJGAfHh1IUR5dGA0fSR1cHABICVNgIQ4FHkxcD0kRRFBEBl8NAU4JGC4gGhIRSEIcVFgLQUIBQh8NTxMYLSACGB1JHA9dBgFQQhwdDg1PBlotYA0eAE5FB1lYCkZfGlgYAw0EVS4uDhAWAVMPXxUFVkFEUgQJRBRRYC8HEgFfSUJOHA1AWQZEGEBCCFcjIhoDX05FDVgZClZfRFIZH1UGRihgCxgGSlgAWABEVkoPQQANTxMYKy0dGxpOHAlEGg9WX0RZDRZEC1o5OEMfHENVFwEYCUBMD18JQE0CWSMiDhMWAVwLWQAdUEhEXA0CRggYITkcHwFCXwMBGR1AWQlDCEBPCFsoIApbHEBVAkgAHFYBB1AYAUQGWGAjHRYdSlVCXRUYUlQJHRwJQAlBOGAfEgNdVRwBBAFJVwkdHB5EE04pIEMHBkBABUQaREFMDFgfBA0VVSU/BhlfX1kdQgAcXAEbUAABTgkYPy0aBBJKVUJeBAFdTAtZQB9VFVU7LgoFAVQcHVgHAFoBHF4BDVUIGDg+GhEVQVVCWxUGWkEEUEAbQAFSIClDABJBXhtZWB9SWQ1DAQlNCFpgNQAQG1hCGgEOHVBOAFgCBQ0XVSIvCgMHTBwfWB0LW0gUYQANQgJHdiAGEBtZWAFYBw0fWwddDw1PCBgoKRwSAVkcCUEVC1pIGh0NBVMXWz44QxoGXlUbQFgAUl8KXhkeDRBVOCkdERJBXEJOFRtHQQ0dAAVDFVU+NUMeAEFRAElYC1JDEV4CQEIGQCQpCwUSQRwdWRUMWlgFHRgERAZAPilDARpBXA9KEURfTA9eAwINClEtKAAAX0BfAEwHHFZfER0BA1QJQC0lAVsDTFwPThFEQ1QaUAEFRUtFOS0dBQoBQg9EGg5cXw1CGEBTAkcpPhkYGl8cHEgHHFJYGlACGA0UXzU/DAUSXVUcAQccUlkBXgJAUhJZISUbWwdYXgBIGERFTARdCRUNEV0iKRYWAUkcD1wBCUFEHVxADkAMUT41QxUBRFQJSFgLVkANRQkeWEtXIzgbFhRIHAhCBhxBSBtCQAtAFVApIkMQAUhVAEUbHUBIRFkDH1EOQC0gQx8cWVUCAR4dXUoEVEAHSAlTKCMCWx5MQgVIAEReQhtAGQkNCEYvJA4FFwFAC0MdBkBYBFBAHE0GQCktGlsDQVEXSgYHRkMMHRweQA5GJSlDBRJEXBlMDURATAZSGBlAFU1gPw4BEkNeDwEADV5dBFRAGFQJUD4tQwIdREYLXwcBR1RERgUCRQpdICBDGBFeVRxbFRxcXxEdDR5CD108KQMWFEJMIU8eDVBZGwsZAUMVUSAgDlsHSFwLXhcHQ0hEUw0PShdVLydDFRpOSQ1BEURYSBFTAw1TAxgvIwIHEl5DQkMbHFZPB14HQE0GWjgpHRlfXUUUVxgNH1kaUAEcTgtdIilDHxxYQglBFRtAARtaDRhEBVstPgtbEUFRAEYRHB9PB0UYAERLVjkvBBIHAVIbWQAHXQELUAAJTwNVPmAMFh1JXAsBFw1aQQFfC0BCD1U+KwoFX05cB10WB1JfDB0PGVMTVSUiQxMcQkIMSBgEH0gGRwkAThdRYCkdFgBIQkJLGAlARQRYCwRVS1I+JQsQFgFYD0AZDUEBAFQNCFEPWyIpHFsbSFwDSABEW0wBQw4eVBRcYCcKAwdBVUJBFQxXSBodAA1MFxggOQgQEkpVQkAVD11IHB0BBVMVWz5gARIQRlwPThFEQ0wBXxgOUxJHJGAfFgBeQAFfAERDSAZSBQANF10gIAAAX15TB14HB0FeREIEA1cCWGA/HxgdSlVCXgEBR04JQglAVQJVPCMbWwdFVRxAGwVWWQ1DQBhOBkc4KR1bB0JfGkUWGkZeAB0YA1YCWGA4GBIWV1UcXlgcSl0NRh4FVQJGYDsOGx9IREJaHAFAWQRUQBtAFVA+Iw0SX1pYC0gYClJfGl4bEHIEXSkiDBJJTEMaXxsGXEARHQEDTQJXOSAKWxRfURhEABEfSARUDxhTCFpgIgoCB19fAAEEGlxZB19AA1keUykiQx8KSUIBShEGH0MBRR4DRgJaYC8HEh5EQxpfDURRRAddAwtYS0QkNRweEF4cCUwYCUtURFAfGEQVWyUoQxQcQFUaAQQEUkMNRUACRAVBIC1DBgZMQw9fWA1QQQFBHwkNCEYuJRtbHkxXAEgAAUBARFceBUITXSMiQwEWQV8NRAARH0AHXAkCVRJZYCkBEgFKSUJMAAdeAQ1fFhVMAhg8PgADFkReQk8VC0dIGlgNQFcORjk/QxAWQ1UaRBcbH0geXgAZVQ5bImAJGABeWQIBGQFdSBpQAEBCFU0/OA4bX0FRDEIGCUdCGkhACVkXUT4lAhIdWRwGVAQHR0UNQgUfDQpdLz4ABBBCQAsBBxhWThxDGQENFVUoJQ4DGkJeQlsbBEdMD1RAD0gVVzklG1sQWEIcSBocH1kAVB4BQAsYPD4KBABYQgsBEA1dXgFFFUBEC1EhKQEDX0RDAVkbGFYBC1AYDU0eRzhgARIGX18AARsaVEwGWB8BDQJXIz8WBAdIXUJFFQpaWQlFQA9ECUA+JQkCFEgcGEwXC1pDDU0/HE4VQD92CRgcWVIPQRhEUUwbWgkYQwZYIGANFgBIUg9BGERQXwFSBwlVS0ApIgEeAAFCG0oWER9FB1IHCVhLRzslAhoaQ1dCTg0LX0QGVkANUwRcKT4WWxVIXg1EGg8fShFcAg1SE10vP0MaEl9RGkUbBh9eGEMFAlUOWitgGAUWXkQCRBoPH08HSQUCRktWLSgCHh1ZXwABAgdfQQ1IDg1NCxgkLQETEUxcAgETB19LREIHBUgJU2A/ARgET18PXxBEQFgaVwUCRktXICUCFRpDV0JfGx9aQw8dHw1IC10iK0MTGltZAEpYG1hMHFgCCw0FWzsgBhkUAVQPXwAbH0cdVQNASgZGLTgKWwdfWQ9ZHARcQ0RbDRpEC10iYAcCAUlcC15YGlZBCUhAHkQBUT4pClsUQlECRhENQ0gaHR8YUw5fKT5DExZLVQBJERofXQ1fDQBVHhg4PgAHG1QcDUUVBUNEB19AGE4SRiItAhIdWRwNQhULWwEJRQQARBNRYDwAExpYXUJAEQxSQURCDwNTAkgNPhsESV1RB0MAAV1KREIPGU0XQDk+ClscX1MGSAccQUxEQhUBUQ9bIjVDEAZERA9fWBhaTAZeQBpICFglIkMDAVhdHkgARFBBCUMFAkQTGD8tFxgDRV8ASFgMQVgFXAkeDQpRICMLDl9fWBdZHAUfRQlDAQNPHhgvJAAFBl4cAV0RGlIBClAAAEQTGDwjHQMBTFkaARgJXUkbUg0cREtTLSADEgFUHA1MGh5SXkRBAxhVAkY1YAIYAExZDQEEB1ZZGkhAAk4RUSBgDgIHRV8cAQcHXUMNRUAPSQZEOCkdWxdfUQNMWAtcQA1VFUBCDlopIQ5bF0RCC04AB0EBCVIYA1NLVyM/GwIeSBwcSBwNUl8bUABAQghaLykdA19LVR1ZHR5SQURdFR5IBEdgLQMVBkAcHUIEGlJDBx0PCU0LW2AkDgUDAVYCWAANH1kaXgEOTglRYC0MFBxfVAdCGkRRTAZbA0BUDEEgKQMSX1lRAEobRERMBEUWEG8GQDk+Ck0HRUUASREaH0EBVgQYTw5aK2ANGxpXSg9fEERBTAFfDgNWS1w5Ph0eEExeCwEAB0FDCVUDQEUVXTY2AxJfT0ILSA4NH14dXx8ESAlRYCEAGB1BWQlFAERHWgFdBQtJExg/OQEFGl5VQl4BBkBIHB0NGkALVSIvBxJfSFEcWRwZRkwDVEAYUhJaLSEGWx5CXh1CGwYfSRpeGQtJExghJRwDX0tCAV4AREBDB0YKAEAMUWAlDB4QQVVCXQEMV0ENHR4FVwJGYD8bBRZMXUJdGwZXAQdSCQ1PS1cjPg4bX19VC0tYDEZDDR0PAEgBUmAvDgEWAVYBXxEbRwEKQw0CQg8YLiAABABCXUJdERxSQURBCQ5DC1FgLgACH0lVHAEAAFpeHF0JQEMGWS4jAFsQTFMaWAdEXF8LWQUIDRNBICUfWxdMWR1UWBtGQw5dAxtEFRggLRkSHUlVHAEZCUNBDR0bBU0LWztgDBIXTEJCTx0aUEVEUA8DUwlIBiMNBElZVQ9OHA1BAQxeDxhOFRgiOR0EFgFVAEodBlZIGh0cAFQKVik+QxQSX0ALQwANQQENXQkPVRVdLyUOGV9MQg1FHRxWThwdHAVNCEBgPw4eH0JCQksVGl5IGh0ODUoCRmAuGgMQRVUcARcAVktERg0FVQJGYC4OBRpeRA8BGAFRXwlDBQ1PS14jOR0ZEkFZHVlYBFJaEVQeQEsSUCspQxMWQ0QHXgBEQFgaVgkDT0tEJC0dGhJOWR1ZWBtQRA1fGAVSExgtPxsFHENRG1lYDlpfDVcFC0kTUT5gCxIHSFMaRAINH0ANUgQNTw5XYCsOBRdIXgtfWBxSRAReHkBRBl0iOAoFX15TG0EEHFxfRFwZH0gEXS0iQxMSQ1MLX1gYW0IcXgseQBdcKT5DExZeWQlDERofTAtSAxlPE1UiOEMVEkNbC19YC1JeAFgJHg0EWCktARIBAVQcRAINQQEFWAIJU0tSJT8HEgFAUQABBwdfSQFUHkBGElU+KEMHAUJXHEwZBVZfREEeA0cCRz8jHVsHX1EAXhgJR0IaHQUCVQJGPD4KAxZfHAJEEg1UWAlDCEBDC1UvJxwaGllYEnkRC1sXC14BHFQTUT5gBhkHSEIASABEREgKQgUYREtWPiMYBBZfHB1CEhxETBpUQARAFVA7LR0SX0NVGlobGlgBG1QeGkQVGCgtGxYRTEMLARUEVEIaWBgETEtZIyIGAxxfHB5fHQZHSBodAA1RE1s8YBsWEUFVGgEHBVJfHEEEA08CGC4tGwMWX0lCTxgdVlkHXhgEDRBdPikDEgBeHBxCARxWX0RXBR5EEFUgIEMHEl5DGUIGDB9IBlIeFVETXSMiQxMcWl4CQhUMH1gYXQMNRUtEJTQKG19ORRxeGxofSQ1CBxhOFxgqIwMTFl8cGUQaDFxaREEeA0YVVSFgGRYBRFEMQRFEVVgGUhgFTgkYLyMCBxpBVRwBEA1RWA9WCR4NE1E+IQYZEkEcCkgCDV9CGFQeQEgJQCk+CRYQSBwMTBoMREQMRQRAQgtbOShDBRxPXxoBBw1dXgdDQAhTCFopYBwWB0hcAkQADR9MBkUJAk8GGDw+ABQWXkMBX1gFVkAHQxVAUhNbPi0IEl9IXQFHHURbTBtZGA1GS0QjKAwWAFkcHVkGDVJAAV8LQFcORjg5DhtfTEYPWRUaT3oNUBgERBUOKD4GDQlBVUJZHB1dSQ1DQApTCEc4YB0WGkNSAVpYBVxDG14DAg0FWCU2FRYBSRwGTB0EQFkHXwlAUhJaPyQGGRYBVAFaGhhcWBodDxVCC1siKUMDHF9eD0kbRFVCGlQPDVITGD8iAAAVTFwCARwNUlkfUBoJXTRELS8KTRJeRBxCGglGWURBAA1PAkBgLwAaFlkcAEgWHV9MRFYNAEAfTWAhCgMWQkJCQgYKWllEQwMPSgJAYD8OAxZBXAdZEURSXhxUHgNIAxgpLwMeA15VQk4GCUdIGh0fGEAVWCUrBwNfXkAPThEbW0QYTScFVQRcKSJVBANMRBtBFURQQgRQAghEFRg7JAYEGAFDBUQYBFZZREINGUICRC0iQxsSSVwLARMaUlkNQ0AOTQJaKCkdWwFCXAJEGg9DRAYdDwROF0QlIggVHExCCgEADVJOHUFADVEVWyJgHB4WW1VCWRsGVF4UeQMZUgIOLyQGGh1ISUJeAAlaXwtQHwkND1UgIBgWCgFSC0kGB1xAREMDA0cTWzxgCxgcX0cPVFgLRl0KXg0eRUtDLT4LBRxPVUJLHRpWXQRQDwkNA1sjPgIWBwFHB0MQB0ReAV0AQEMGQCQ+ABgeAVIPXhEFVkMcHQ0YVQ5XMAsOBRdIXlRZBgdESAQdDwNMF1s/OEMEFkhUAkQaDx9JCVcKA0UOWGAhDgUaSl8CSVgcQUgEXQUfDRBVOCkdHh1KUw9DWA5fQh9UHg5EAxg8PhoZFl8cBkgQD1ZfB0ZAH1QJUiAjGBIBAVICWBEKVkEEHQANVwJaKCkdWxVCSAlBGx5WUTtUDR9IA1F2PwoWFFhcAgEHCV1JC1AfGE0CGDwpDRUfSBwdSBUbW0gEXUAYSANRPCMAG19eWAFfEQRaQw0dHw1IC1YjLRtbEkNTBkIGRFFICVIED04KVik+QxMBRFYaWhsHVwELXgIPSUtfKSAfWwBIUR1dBglKARtQAghDBkY=";
   function decodeWords() {
     const raw = atob(_D);
     let text = "";
@@ -367,6 +402,10 @@
     misses: document.getElementById("misses"),
     leafCount: document.getElementById("leafCount"),
     category: document.getElementById("category"),
+    debugWord: document.getElementById("debugWord"),
+    debugRecentWords: document.getElementById("debugRecentWords"),
+    recentWordCount: document.getElementById("recentWordCount"),
+    recentWordList: document.getElementById("recentWordList"),
     keyboard: document.getElementById("keyboard"),
     art: document.getElementById("art"),
     butterflies: document.getElementById("butterflies"),
@@ -374,13 +413,16 @@
     newGame: document.getElementById("newGame")
   };
   const leaves = el.art.querySelectorAll(".leaf");
+  const DEBUG = new URLSearchParams(window.location.search).has("debug");
+  if (DEBUG && el.debugWord) el.debugWord.hidden = false;
+  if (DEBUG && el.debugRecentWords) el.debugRecentWords.hidden = false;
   leaves.forEach((leaf, i) => {
     leaf.style.setProperty("--i", i);
     // even leaves sit on the left of the stem, odd on the right: grow from the stem side
     leaf.style.setProperty("--ox", i % 2 === 0 ? "100% 90%" : "0% 90%");
   });
 
-  let current, guessed, wrong, over, lastWord = "";
+  let current, guessed, wrong, over;
   let stats = { wins: 0, losses: 0, streak: 0 };
 
   try {
@@ -451,6 +493,26 @@
 
   // ---- Save the game in progress so a refresh can't be used to re-roll the word
   const GAME_KEY = "bloom-game";
+  const RECENT_WORDS_KEY = "bloom-recent-words";
+  const RECENT_WORDS_LIMIT = 400;
+  let recentWords = [];
+  try {
+    const savedWords = JSON.parse(localStorage.getItem(RECENT_WORDS_KEY) || "[]");
+    if (Array.isArray(savedWords)) {
+      const validWords = new Set(ALL.map(entry => entry.word));
+      recentWords = [...new Set(savedWords.filter(word => typeof word === "string" && validWords.has(word)))].slice(-RECENT_WORDS_LIMIT);
+    }
+  } catch (e) {}
+
+  function saveRecentWords() {
+    try { localStorage.setItem(RECENT_WORDS_KEY, JSON.stringify(recentWords)); } catch (e) {}
+  }
+
+  function recordRecentWord(word) {
+    if (!recentWords.includes(word)) recentWords.push(word);
+    if (recentWords.length > RECENT_WORDS_LIMIT) recentWords.splice(0, recentWords.length - RECENT_WORDS_LIMIT);
+    saveRecentWords();
+  }
 
   function saveGame() {
     try {
@@ -484,15 +546,21 @@
       }
     }
     if (!resumed) {
-      let pick;
-      do { pick = ALL[Math.floor(Math.random() * ALL.length)]; } while (pick.word === lastWord);
-      current = pick;
+      let available = ALL.filter(entry => !recentWords.includes(entry.word));
+      while (available.length === 0 && recentWords.length > 0) {
+        recentWords.shift();
+        available = ALL.filter(entry => !recentWords.includes(entry.word));
+      }
+      current = available[Math.floor(Math.random() * available.length)];
       guessed = new Set();
       wrong = 0;
+      recordRecentWord(current.word);
+    } else if (!recentWords.includes(current.word)) {
+      recordRecentWord(current.word);
     }
-    lastWord = current.word;
     over = false;
     el.category.textContent = current.cat;
+    if (el.debugWord) el.debugWord.querySelector("strong").textContent = current.word.toUpperCase();
     el.art.classList.remove("won", "lost");
     el.butterflies.innerHTML = "";
     el.status.className = "status";
@@ -532,6 +600,19 @@
     saveStats(); renderStats(); saveGame();
     render();
     el.newGame.focus();
+  }
+
+  function revealDebugWord() {
+    if (!DEBUG || over || !current) return;
+    if (giveUpArmed) { giveUpArmed = false; clearTimeout(giveUpTimer); }
+    const counts = new Map();
+    for (const letter of current.word) counts.set(letter, (counts.get(letter) || 0) + 1);
+    const finalLetter = [...current.word].reverse().find(letter => counts.get(letter) === 1);
+    const lettersToReveal = new Set([...current.word].filter(letter => letter !== finalLetter));
+    for (const letter of lettersToReveal) guessed.add(letter);
+    wrong = [...guessed].filter(letter => !current.word.includes(letter)).length;
+    render();
+    saveGame();
   }
 
   // Keep the word on a single line: shrink slots, gaps and letters together if it is too wide
@@ -578,6 +659,8 @@
     const missed = [...guessed].filter(l => !current.word.includes(l));
     el.misses.textContent = missed.length ? "Missed: " + missed.join(" ").toUpperCase() : "";
     if (!over && !giveUpArmed) el.newGame.textContent = guessed.size > 0 ? "Give up" : "New word";
+    if (el.recentWordCount) el.recentWordCount.textContent = "(" + recentWords.length + "/" + RECENT_WORDS_LIMIT + ")";
+    if (el.recentWordList) el.recentWordList.textContent = recentWords.join(", ");
   }
 
   // One butterfly per win in the current streak (capped so the scene stays readable)
@@ -609,12 +692,46 @@
       const sx = (x >= 100 ? 1 : -1) * (110 + (k * 17) % 50);
       const sy = -50 + (k * 29) % 90;
       const delay = 0.5 + Math.min(k * 0.3, 4);
+      const flapDelay = -Math.random() * 0.28;
       const c = BF_COLOURS[k % BF_COLOURS.length];
       html += '<g transform="translate(' + x.toFixed(1) + ' ' + y.toFixed(1) + ') scale(' + scale.toFixed(2) + ')">' +
-        '<g class="bfly-in" style="--sx:' + sx + 'px;--sy:' + sy + 'px;--d:' + delay.toFixed(2) + 's;--w1:' + c[0] + ';--w2:' + c[1] + '">' +
+        '<g class="bfly-in" style="--sx:' + sx + 'px;--sy:' + sy + 'px;--d:' + delay.toFixed(2) + 's;--w1:' + c[0] + ';--w2:' + c[1] + ';--flap-delay:' + flapDelay.toFixed(3) + 's">' +
         BF_ART + '</g></g>';
     }
     el.butterflies.innerHTML = html;
+  }
+
+  function spawnPerfectBee() {
+    const bee = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    bee.setAttribute("class", "bee-flight");
+    bee.innerHTML = '<g class="bee-wings" style="--bee-flap-delay:' + (-Math.random() * 0.11).toFixed(3) + 's">' +
+      '<ellipse class="bee-wing" cx="-5" cy="-7" rx="5" ry="8" transform="rotate(-30 -5 -7)"/>' +
+      '<ellipse class="bee-wing" cx="5" cy="-7" rx="5" ry="8" transform="rotate(30 5 -7)"/>' +
+      '</g><ellipse class="bee-body" cx="0" cy="0" rx="9" ry="6"/>' +
+      '<path class="bee-stripe" d="M-3 -5 Q-5 0 -3 5 M3 -5 Q1 0 3 5"/>' +
+      '<circle cx="8" cy="-1" r="1" fill="#1b3a31"/>';
+    el.butterflies.appendChild(bee);
+  }
+
+  function openWordList() {
+    if (!DEBUG) return;
+    const page = window.open("", "_blank");
+    if (!page) return;
+    const grouped = new Map();
+    for (const entry of ALL) {
+      if (!grouped.has(entry.cat)) grouped.set(entry.cat, []);
+      grouped.get(entry.cat).push(entry.word);
+    }
+    const escapeHTML = value => String(value).replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[ch]);
+    const totalWords = [...grouped.values()].reduce((sum, words) => sum + words.length, 0);
+    const sections = [...grouped].map(([category, words]) =>
+      "<section><h2>" + escapeHTML(category) + " <span class=\"count\">(" + words.length + " words)</span></h2><p>" +
+      words.map(escapeHTML).join(", ") + "</p></section>"
+    ).join("");
+    page.document.write("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Bloom word list</title><style>body{max-width:760px;margin:40px auto;padding:0 20px;background:#e6f2ec;color:#1b3a31;font:16px system-ui,sans-serif}h1{margin-bottom:8px}.total{color:#4f6e63;margin:0 0 24px}section{padding:12px 0;border-bottom:1px solid #a9c7b9}h2{margin:0 0 6px;font-size:1.15rem}.count{font-size:.9rem;font-weight:400;color:#4f6e63}p{margin:0;line-height:1.7}</style></head><body><h1>Bloom word list</h1><p class=\"total\">Total: " + totalWords + " words across " + grouped.size + " categories</p>" + sections + "</body></html>");
+    page.document.close();
   }
 
   function guess(letter) {
@@ -628,6 +745,7 @@
       over = true;
       stats.wins++; stats.streak++;
       spawnButterflies(stats.streak);
+      if (wrong === 0) spawnPerfectBee();
       el.art.classList.add("won");
       el.status.className = "status won";
       el.status.textContent = "It bloomed! The word was " + current.word + "." +
@@ -658,10 +776,16 @@
     if (/^[a-z]$/i.test(e.key)) guess(e.key.toLowerCase());
   });
   el.newGame.addEventListener("click", onNewGame);
+  el.debugWord.addEventListener("click", revealDebugWord);
+  document.getElementById("wordListButton").addEventListener("click", event => {
+    event.stopPropagation();
+    openWordList();
+  });
   window.addEventListener("resize", fitWord); // also fires on rotate
 
   renderStats();
   start(loadGame());
 </script>
-</body>
-</html>
+
+
+</body></html>
